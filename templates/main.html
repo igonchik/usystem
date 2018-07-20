@@ -1,0 +1,72 @@
+{% extends "index.html" %}
+
+{% load staticfiles %}
+{% load l10n %}
+{% load i18n %}
+
+{% block page %}
+<ul data-role="treeview" id="tv_1">
+    <li data-icon="<span class='mif-star-full'></span>" data-caption="Favorites">
+        <ul>
+            <li data-icon="<span class='mif-library'></span>" data-caption="Projects"></li>
+            <li data-icon="<span class='mif-download'></span>" data-caption="Downloads"></li>
+            <li data-icon="<img src='images/desktop.png'>" data-caption="Desktop"></li>
+        </ul>
+    </li>
+    <li data-icon="<span class='mif-onedrive'></span>" data-caption="OneDrive">
+        <ul>
+            <li data-caption="Documents"></li>
+            <li data-caption="Projects">
+                <ul>
+                    <li data-caption="Web"></li>
+                    <li data-caption="Android"></li>
+                    <li data-caption="Windows"></li>
+                    <li data-caption="iOS"></li>
+                </ul>
+            </li>
+        </ul>
+    </li>
+</ul>
+
+
+    <button class="button" onclick="
+    $('#tv_1').data('treeview').addTo(null, {
+        caption: 'New node',
+        icon: '<span class=\'mif-air\'></span>'
+    })
+">Add node</button>
+
+<button class="button" onclick="
+    $('#tv_1').data('treeview').addTo($('#tv_1').find('.current'), {
+        caption: 'New node'
+    })
+">Add subnode</button>
+
+<button class="button" onclick="
+    var tv = $('#tv_1');
+    tv.data('treeview').addTo(tv.find('.current'), {
+        html: '<input data-role=checkbox data-caption=Checkbox>'
+    })
+">Add checkbox</button>
+
+<button class="button" onclick="
+    $('#tv_1').data('treeview').insertBefore($('#tv_1').find('.current'), {
+        caption: 'Before node'
+    })
+">Insert before</button>
+
+<button class="button" onclick="
+    $('#tv_1').data('treeview').insertAfter($('#tv_1').find('.current'), {
+        caption: 'After node'
+    })
+">Insert after</button>
+
+<button class="button" onclick="
+    $('#tv_1').data('treeview').del($('#tv_1').find('.current'))
+">Delete</button>
+
+<button class="button" onclick="
+    $('#tv_1').data('treeview').clean($('#tv_1').find('.current'))
+">Clear</button>
+
+{% endblock %}

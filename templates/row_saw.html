@@ -1,0 +1,77 @@
+<tr class="saw control saw{{ forloop.counter }}0">
+    <td><input tabindex="1" class="form-control width-input plane-input len_input" type="text" value="{{ rec.0 }}"></td>
+    <td><input tabindex="2" class="form-control width-input plane-input width_input" type="text" value="{{ rec.1 }}"></td>
+    <td><input tabindex="3" class="form-control width-input plane-input count_input" type="text" value="{{ rec.2 }}"></td>
+    <td class="border-selector">
+        <div class="left-part">
+            <a href="#" class="border-left {% if rec.3.3 == 0.4 %}checked{% endif %}" data-value="0.4">0.4</a>
+            <br>
+            <a href="#" class="border-left {% if rec.3.3 == 0.8 %}checked{% endif %}" data-value="0.8">0.8</a>
+            <br>
+            <a href="#" class="border-left {% if rec.3.3 == 2 %}checked{% endif %}" data-value="2">2</a>
+            <select name="border-left" style="display: none">
+                <option value="0"></option>
+                <option value="0.4" {% if rec.3.3 == 0.4 %}selected{% endif %}></option>
+                <option value="0.8" {% if rec.3.3 == 0.8 %}selected{% endif %}></option>
+                <option value="2" {% if rec.3.3 == 2 %}selected{% endif %}></option>
+            </select>
+        </div>
+        <div class="center-part">
+            <div class="top-part">
+                <a href="#" class="border-top {% if rec.3.0 == 0.4 %}checked{% endif %}" data-value="0.4">0.4</a>
+                &nbsp;
+                <a href="#" class="border-top {% if rec.3.0 == 0.8 %}checked{% endif %}" data-value="0.8">0.8</a>
+                &nbsp;
+                <a href="#" class="border-top {% if rec.3.0 == 2 %}checked{% endif %}" data-value="2">2</a>
+                <select name="border-top" style="display: none">
+                    <option value="0"></option>
+                    <option value="0.4" {% if rec.3.0 == 0.4 %}selected{% endif %}></option>
+                    <option value="0.8" {% if rec.3.0 == 0.8 %}selected{% endif %}></option>
+                    <option value="2" {% if rec.3.0 == 2 %}selected{% endif %}></option>
+                </select>
+            </div>
+            <div class="color-part" data-toggle="tooltip" data-placement="top"
+                 data-original-title="'2' - кромка толщиной 2 мм. '0,4' - кромка толщиной 0.4 мм. '0,8' - кромка толщиной 0.8 мм."></div>
+            <div class="bottom-part">
+                <a href="#" class="border-bottom {% if rec.3.2 == 0.4 %}checked{% endif %}" data-value="0.4">0.4</a>
+                &nbsp;
+                <a href="#" class="border-bottom {% if rec.3.2 == 0.8 %}checked{% endif %}" data-value="0.8">0.8</a>
+                &nbsp;
+                <a href="#" class="border-bottom {% if rec.3.2 == 2 %}checked{% endif %}" data-value="2">2</a>
+                <select name="border-bottom" style="display: none">
+                    <option value="0"></option>
+                    <option value="0.4" {% if rec.3.2 == 0.4 %}selected{% endif %}></option>
+                    <option value="0.8" {% if rec.3.2 == 0.8 %}selected{% endif %}></option>
+                    <option value="2" {% if rec.3.2 == 2 %}selected{% endif %}></option>
+                </select>
+            </div>
+        </div>
+        <div class="right-part">
+            <a href="#" class="border-right {% if rec.3.1 == 0.4 %}checked{% endif %}" data-value="0.4">0.4</a>
+            <br>
+            <a href="#" class="border-right {% if rec.3.1 == 0.8 %}checked{% endif %}" data-value="0.8">0.8</a>
+            <br>
+            <a href="#" class="border-right {% if rec.3.1 == 2 %}checked{% endif %}" data-value="2">2</a>
+            <select name="border-right" style="display: none">
+                <option value="0"></option>
+                <option value="0.4" {% if rec.3.1 == 0.4 %}selected{% endif %}></option>
+                <option value="0.8" {% if rec.3.1 == 0.8 %}selected{% endif %}></option>
+                <option value="2" {% if rec.3.1 == 2 %}selected{% endif %}></option>
+            </select>
+        </div>
+    </td>
+    <td style="text-align: center">
+        {% if rec.0 %}
+            <button title="Изменить" type="button" class="btn btn-success btn-edit-go">
+                <span class="glyphicon glyphicon-pencil"></span>
+            </button>
+            <button title="Изменить" type="button" class="btn btn-danger btn-rmv-go">
+                <span class="glyphicon glyphicon-remove"></span>
+            </button>
+        {% else %}
+            <button title="Добавить" type="button" class="btn btn-primary btn-add-go">
+                <span class="glyphicon glyphicon-ok"></span>
+            </button>
+        {% endif %}
+    </td>
+</tr>

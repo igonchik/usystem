@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+{% load staticfiles %}
+{% load l10n %}
+{% load i18n %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta property="og:title" content="Калькулятор раскроя" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% trans "SiteName"%}</title>
+    <link href="{% static "favicon.ico" %}" rel="icon" type="image/icon">
+    <link href="{% static "css/metro-all.min.css" %}" type="text/css" rel="stylesheet">
+    <link href="{% static "css/index.css" %}" type="text/css" rel="stylesheet">
+    <script src="{% static "js/jquery-3.3.1.min.js" %}" type="text/javascript"></script>
+    <script src="{% static "js/metro.min.js" %}" type="text/javascript"></script>
+    <script src="{% static "js/index.js" %}" type="text/javascript"></script>
+</head>
+<body class="lang-{{ LANGUAGE_CODE }}">
+<table class="main">
+    <tr><td colspan="2">
+        <ul class="h-menu">
+            <li><a href="#">Home</a></li>
+            <li>
+                <a href="#" class="dropdown-toggle">Products</a>
+                <ul class="d-menu" data-role="dropdown">
+                    <li>
+                        <a href="#" class="dropdown-toggle">Windows</a>
+                        <ul class="d-menu" data-role="dropdown">
+                            <li><a href="#">Windows 10</a></li>
+                            <li><a href="#">Windows Server</a></li>
+                            <li class="divider"></li>
+                            <li><a href="#">MS-DOS</a></li>
+                        </ul>
+                    </li>
+                    <li><a href="#">Skype</a></li>
+                    <li class="divider"></li>
+                    <li><a href="#">Office</a></li>
+                </ul>
+            </li>
+            <li><a href="#">Support</a></li>
+            <li><a href="#">Cart</a></li>
+        </ul>
+    </td></tr>
+    <tr>
+        <td style="width: 350px">
+            <ul class="v-menu">
+                <li class="menu-title">General</li>
+                <li><a href="#"><span class="mif-home icon"></span> Home</a></li>
+                <li class="menu-title">Products</li>
+                <li><a href="#"><span class="mif-windows icon"></span> Windows</a></li>
+                <li><a href="#"><span class="mif-library icon"></span> Office 365</a></li>
+                <li><a href="#"><span class="mif-skype icon"></span> Skype</a></li>
+                <li class="menu-title">Support</li>
+                <li>
+                    <a href="#" data-hotkey="Alt+F1">Community</a>
+                    <ul class="v-menu" data-role="dropdown">
+                        <li><a href="#">Blog</a></li>
+                        <li><a href="#">Github</a></li>
+                        <li><a href="#">Forum</a></li>
+                        <li class="divider"></li>
+                        <li class="p-2 bg-light">
+                            <button class="button square primary"><span class="mif-target"></span></button>
+                            <button class="button square success"><span class="mif-apps"></span></button>
+                            <button class="button square alert"><span class="mif-file-code"></span></button>
+                            <button class="button square warning"><span class="mif-download"></span></button>
+                        </li>
+                    </ul>
+                </li>
+                <li class="menu-title">Shop</li>
+                <li><a href="#"><span class="mif-cart icon"></span> Cart</a></li>
+            </ul>
+        </td>
+        <td>
+            {% block page %}{% endblock %}
+        </td>
+    </tr>
+</table>
+</body>
+</html>

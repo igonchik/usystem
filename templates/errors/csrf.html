@@ -1,0 +1,38 @@
+<html>
+{% load staticfiles %}
+{% load l10n %}
+{% load i18n %}
+{% load url from future %}
+<head>
+    <title>Ошибка!</title>
+</head>
+<body>
+<table width=100% height=100%>
+    <tr>
+        <td width=100% height=100% align="center">
+            <table>
+                <tr>
+                    <td style="text-align: justify; max-width: 400px">
+                        <p>
+                            <b>
+                                Внимание!
+                                Был осуществлен переход на защищенный портал с внешней ссылки.
+                                Все ошибки автоматически регистрируются на сервере.
+                                Администраторы сайта вскоре предпримут меры для устранения ошибки.
+                                Для ускорения данного процесса сообщите об ошибке по e-mail:
+                                <p style="text-align: center;"><a href="mailto:special-admin@mss.fso">special-admin@mss.fso</a></p>
+                            </b>
+                        </p>
+                    </td>
+                </tr>
+                <tr>
+                    <td align="center">
+                        <img src="{% static "img/error_comment_or_term.jpg" %}" alt="Ошибка">
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
+</body>
+</html>

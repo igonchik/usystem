@@ -1,0 +1,116 @@
+#!/bin/bash
+#use ./start <adminlogin> <groupname> <adminemail>
+#apt-get install libapache2-mod-authnz-external pwauth
+#https://linuxconfig.org/configuring-gmail-as-sendmail-email-relay
+#apt-get install sasl2-bin
+#a2enmod authnz_external
+#apache2 conf 
+#<IfModule mod_authnz_external.c>
+#  AddExternalAuth pwauth /usr/sbin/pwauth
+#  SetExternalAuthMethod pwauth pipe
+#</IfModule>
+#apt-get install apg
+#apt-get install chage
+#apt-get install acl
+#apt-get install libapache2-mod-security2
+#create database usystem;
+#cp gost.so /usr/local/lib/engines-1_1/gost.so
+
+#TODO: script to auto find expire passwd
+#TODO: change passwd script
+#TODO: create group for admin
+#TODO: crl update script
+#TODO: ca update script
+
+#Create Master User
+mkdir /home/$1
+chmod 0750 /home/$1/
+useradd -d /home/$1 -g `id -G www-data` $1
+chown -R $1:0 /home/$1/
+groupadd $2
+usermod -a -G $2 $1
+usermod -a -G www-data $1
+pass=`apg -n 1 -M SNLC -m 8 -x 10`
+echo "$1:$pass" | chpasswd
+chage -M 90 $1
+echo 'create role "$1"; create or replace schema "$1"; grant usage on schema "$1";' | psql -U postgres usystem
+
+#Create group
+mkdir /home/$1/$2/
+mkdir /home/$1/$2/newcerts
+mkdir /home/$1/$2/certs
+mkdir /home/$1/$2/p12
+mkdir /home/$1/$2/reqs
+mkdir /home/$1/$2/private
+touch /home/$1/$2/index.txt
+touch /home/$1/$2/index.txt.attr
+echo '01' > /home/$1/$2/crlnumber
+echo '01' > /home/$1/$2/serial
+chown -R $1:$2 /home/$1/$2/
+chmod 0750 /home/$1/$2/
+cp /etc/ssl/openssl.cnf_def /home/$1/$2/openssl.cnf
+sed -i -e "s/testuser/$1/g" -e "s/testgroup/$2/g" /home/$1/$2/openssl.cnf
+chmod 0440 /home/$1/$2/openssl.cnf
+chown $1:$2 /home/$1/$2/openssl.cnf
+
+chmod -R g+s /home/$1/$2/
+chmod g+s /home/$1/$2/newcerts
+chmod g+s /home/$1/$2/certs
+chmod g+s /home/$1/$2/p12
+chmod g+s /home/$1/$2/reqs
+chmod g+s /home/$1/$2/private
+
+setfacl -d -m g::rx /home/$1/$2/
+setfacl -d -m u::rwx /home/$1/$2/newcerts
+setfacl -d -m u::rwx /home/$1/$2/certs
+setfacl -d -m u::rwx /home/$1/$2/p12
+setfacl -d -m u::rwx /home/$1/$2/reqs
+setfacl -d -m u::rwx /home/$1/$2/private
+setfacl -d -m u::rwx /home/$1/$2/
+setfacl -d -m g::rx /home/$1/$2/newcerts
+setfacl -d -m g::rx /home/$1/$2/certs
+setfacl -d -m g::rx /home/$1/$2/p12
+setfacl -d -m g::rx /home/$1/$2/reqs
+setfacl -d -m g::rx /home/$1/$2/private
+
+#Crypto path
+#Create Master CA
+openssl genrsa -des3 -passout pass:$pass -out /home/$1/$2/private/ca.key 4096 1>&2 2>/dev/null
+openssl req -x509 -new -sha256 -days 1825 -key /home/$1/$2/private/ca.key -out /home/$1/$2/cacert.pem -subj "/C=RU/O=$2/CN=$2_CA/emailAddress=$3" -passin pass:$pass
+openssl ca -config /home/$1/$2/openssl.cnf -gencrl -passin pass:$pass -out /home/$1/$2/cacrl.pem
+chmod 0640 /home/$1/$2/private/ca.key
+chown $1:$2 /home/$1/$2/private/ca.key
+chmod 0640 /home/$1/$2/cacert.pem
+chown $1:$2 /home/$1/$2/cacert.pem
+chmod 0640 /home/$1/$2/cacrl.pem
+chown $1:$2 /home/$1/$2/cacrl.pem
+#Generate master admin
+openssl genrsa -des3 -passout pass:$pass -out /home/$1/$2/private/$1.key 4096 1>&2 2>/dev/null
+openssl req -new -key /home/$1/$2/private/$1.key -out /home/$1/$2/reqs/$1.req -passin pass:$pass -subj "/C=RU/O=$2/CN=$1/emailAddress=$3"
+openssl ca -config /home/$1/$2/openssl.cnf -batch -days 90 -notext -md sha256 -in /home/$1/$2/reqs/$1.req -out /home/$1/$2/certs/$1.pem -passin pass:$pass 1>&2 2>/dev/null
+chmod 0640 /home/$1/$2/private/$1.key
+chown $1:$2 /home/$1/$2/private/$1.key
+chmod 0640 /home/$1/$2/certs/$1.pem
+chown $1:$2 /home/$1/$2/certs/$1.pem
+openssl pkcs12 -export -out /home/$1/$2/p12/$1.p12 -inkey /home/$1/$2/private/$1.key -in /home/$1/$2/certs/$1.pem -passin pass:$pass -passout pass:$pass 1>&2 2>/dev/null
+chmod 0640 /home/$1/$2/p12/$1.p12
+chown $1:$2 /home/$1/$2/p12/$1.p12
+
+#Generate minion
+minion_name=minion-$1
+minion_pass=`apg -n 1 -M SNLC -m 6 -x 6`
+openssl genrsa -des3 -passout pass:$minion_pass -out /home/$1/$2/private/$minion_name.key 2048 1>&2 2>/dev/null
+openssl req -new -key /home/$1/$2/private/$minion_name.key -out /home/$1/$2/reqs/$minion_name.req -subj "/C=RU/O=$2/CN=$minion_name" -passin pass:$minion_pass
+openssl ca -config /home/$1/$2/openssl.cnf -batch -days 90 -notext -md sha256 -in /home/$1/$2/reqs/$minion_name.req -out /home/$1/$2/certs/$minion_name.pem -passin pass:$pass 1>&2 2>/dev/null
+chmod 0640 /home/$1/$2/private/$minion_name.key
+chown $1:$2 /home/$1/$2/private/$minion_name.key
+chmod 0640 /home/$1/$2/certs/$minion_name.pem
+chown $1:$2 /home/$1/$2/certs/$minion_name.pem
+cat /home/$1/$2/certs/$minion_name.pem /home/$1/$2/private/$minion_name.key > /home/$1/$2/p12/$minion_name.pem
+chmod 0640 /home/$1/$2/p12/$minion_name.pem
+chown $1:$2 /home/$1/$2/p12/$minion_name.pem
+
+#Echo mod
+echo "Successful registatration for group \"$2\""
+echo "Master admin $1 (email: $3) password is $pass"
+echo "Minion $minion_name pass is $minion_pass"

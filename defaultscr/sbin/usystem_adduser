@@ -1,0 +1,96 @@
+#!/bin/bash
+
+#Create Usystem Master User
+echo "select substring(work from 9) from usystem_worker where get_tstamp is null and author = 'uuser' and work like 'registr %';" | su postgres -- -c  "psql -d usystem --no-align --tuples-only" | while read Record ; do
+username=$Record
+mkdir /home/$username
+chmod 0750 /home/$username/
+useradd -d /home/$username -g `id -G www-data` $username
+groupadd $username
+usermod -a -G $username $username
+chown -R $username:uuser /home/$username/
+pass=`apg -n 1 -M SNLC -m 8 -x 10`
+echo "$username:$pass" | chpasswd
+chage -M 90 $username
+echo "update usystem_worker set get_tstamp = now() where get_tstamp is null and author = 'uuser' and work like 'registr $username'; create role \"$username\" login; create schema \"$username\"; grant usage on schema \"$username\" to \"$username\"; alter group umaster add user \"$username\";" | su postgres -- -c "psql -d usystem"
+
+email=`echo "select email from usystem_user where username like '$username';" | su postgres -- -c  "psql -d usystem --no-align --tuples-only"`
+
+if [ -n "$email" ]; then
+mkdir /home/$username/newcerts
+mkdir /home/$username/certs
+mkdir /home/$username/p12
+mkdir /home/$username/reqs
+mkdir /home/$username/private
+touch /home/$username/index.txt
+touch /home/$username/index.txt.attr
+echo '01' > /home/$username/crlnumber
+echo '01' > /home/$username/serial
+chown -R $username:uuser /home/$username/
+cp /etc/ssl/openssl.cnf_def /home/$username/openssl.cnf
+sed -i -e "s/testuser/$username/g" -e "s/testgroup//g" /home/$username/openssl.cnf
+chmod 0440 /home/$username/openssl.cnf
+chown $username:uuser /home/$username/openssl.cnf
+loginpass=$pass
+
+#Crypto path
+#Create Master CA
+pass=`apg -n 1 -M SNLC -m 8 -x 10`
+openssl genrsa -des3 -passout pass:$pass -out /home/$username/private/ca.key 4096 1>&2 2>/dev/null
+openssl req -x509 -new -sha256 -days 1825 -key /home/$username/private/ca.key -out /home/$username/cacert.pem -subj "/C=RU/O=$username/CN=$username/emailAddress=$email" -passin pass:$pass
+openssl ca -config /home/$username/openssl.cnf -gencrl -passin pass:$pass -out /home/$username/cacrl.pem
+chmod 0600 /home/$username/private/ca.key
+chown $username:uuser /home/$username/private/ca.key
+chmod 0640 /home/$username/cacert.pem
+chown $username:uuser /home/$username/cacert.pem
+chmod 0640 /home/$username/cacrl.pem
+chown $username:uuser /home/$username/cacrl.pem
+#Generate web server
+openssl genrsa -out /home/$username/private/web.key 4096 1>&2 2>/dev/null
+openssl req -new -key /home/$username/private/web.key -out /home/$username/reqs/web.req -subj "/C=RU/O=$username/CN=WEB/emailAddress=$email"
+openssl ca -config /home/$username/openssl.cnf -batch -days 1825 -notext -md sha256 -in /home/$username/reqs/web.req -out /home/$username/certs/web.pem -passin pass:$pass 1>&2 2>/dev/null
+chmod 0640 /home/$username/private/web.key
+chown $username:$username /home/$username/private/web.key
+chmod 0640 /home/$username/certs/web.pem
+chown $username:uuser /home/$username/certs/web.pem
+cat /home/$username/certs/web.pem /home/$username/private/web.key >>  /home/$username/p12/web.p12
+chmod 0640 /home/$username/p12/web.p12
+chown $username:$username /home/$username/p12/web.p12
+#Generate master admin
+openssl genrsa -out /home/$username/private/$username.key 4096 1>&2 2>/dev/null
+openssl req -new -key /home/$username/private/$username.key -out /home/$username/reqs/$username.req -subj "/C=RU/O=$username/CN=$username/emailAddress=$email"
+openssl ca -config /home/$username/openssl.cnf -batch -days 1825 -notext -md sha256 -in /home/$username/reqs/$username.req -out /home/$username/certs/$username.pem -passin pass:$pass 1>&2 2>/dev/null
+chmod 0600 /home/$username/private/$username.key
+chown $username:$username /home/$username/private/$username.key
+chmod 0640 /home/$username/certs/$username.pem
+chown $username:uuser /home/$username/certs/$username.pem
+openssl pkcs12 -export -out /home/$username/p12/$username.p12 -inkey /home/$username/private/$username.key -in /home/$username/certs/$username.pem -passin pass:$pass -passout pass:$pass 1>&2 2>/dev/null
+chmod 0640 /home/$username/p12/$username.p12
+chown $username:uuser /home/$username/p12/$username.p12
+
+chown $username:uuser  /home/$username/crl*
+chown $username:uuser  /home/$username/index*
+chown $username:uuser  /home/$username/serial*
+
+chmod g+s /home/$username/
+chmod g+s /home/$username/newcerts
+chmod g+s /home/$username/certs
+chmod g+s /home/$username/p12
+chmod g+s /home/$username/reqs
+chmod g+s /home/$username/private
+setfacl -d -m u::rwx /home/$username/
+setfacl -d -m u::rwx /home/$username/newcerts
+setfacl -d -m u::rwx /home/$username/certs
+setfacl -d -m u::rwx /home/$username/p12
+setfacl -d -m u::rwx /home/$username/reqs
+setfacl -d -m u::rwx /home/$username/private
+setfacl -d -m g::rx /home/$username/
+setfacl -d -m g::rx /home/$username/newcerts
+setfacl -d -m g::rx /home/$username/certs
+setfacl -d -m g::rx /home/$username/p12
+setfacl -d -m g::rx /home/$username/reqs
+setfacl -d -m g::rx /home/$username/private
+
+echo -e "$username , Вы зарегистрированы в USystem!\nПароль для доступа в <a href='http://192.168.233.11:443'>личный кабинет</a> администратора: $loginpass \nПароль для выдачи сертифкатов пользователям: $pass" | mail -s "$(echo -e 'Регистрация в USystem\nContent-Type: text/html')" $email -A /home/$username/p12/$username.p12
+fi
+done

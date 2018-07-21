@@ -12,10 +12,10 @@ handler500 = 'usystem_master.errhandlers.error500'
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
     url(r'^$', index, name='index'),
-    url(r'^/connectvnc/', connectvnc, name='connectvnc'),
-    url(r'^/update/$', update_saw, name='update_saw'),
-    url(r'^/material/$', material, name='material'),
-    url(r'^/material/(?P<num>\d+)/$', material, name='material'),
-    url(r'^/zakaz/$', zakaz, name='zakaz'),
-    url(r'^/zakaz/(?P<num>\d+)/$', zakaz, name='zakaz'),
+    url(r'^connectvnc/', connectvnc, name='connectvnc'),
+    url(r'^update/$', update_saw, name='update_saw'),
+    url(r'^material/$', material, name='material'),
+    url(r'^material/(?P<num>\d+)/$', material, name='material'),
+    url(r'^zakaz/$', zakaz, name='zakaz'),
+    url(r'^zakaz/(?P<num>\d+)/$', zakaz, name='zakaz'),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

@@ -2,13 +2,14 @@
 
 from django.db import models
 from datetime import datetime
+from django.utils.timezone import now
 
 
 class Group(models.Model):
     alias = models.CharField(max_length=100, unique=True, null=False)
     uid = models.TextField(unique=True, null=False)
     num_stars = models.IntegerField()
-    create_tstamp = models.DateTimeField(default=datetime.now())
+    create_tstamp = models.DateTimeField(default=now)
 
     class Meta:
         db_table = '"pubview"."usystem_group_view"'
@@ -18,8 +19,8 @@ class User(models.Model):
     username = models.CharField(max_length=100, unique=True, null=False)
     email = models.EmailField(unique=True)
     uid = models.TextField(unique=True, null=False)
-    register_tstamp = models.DateTimeField(default=datetime.now())
-    lastactivity_tstamp = models.DateTimeField(default=datetime.now())
+    register_tstamp = models.DateTimeField(default=now)
+    lastactivity_tstamp = models.DateTimeField(default=now)
     email_confirmed = models.BooleanField(default='f')
     is_master = models.BooleanField(default='f')
     expirepwd_tstamp = models.DateTimeField()
@@ -46,7 +47,7 @@ class Work_Status(models.Model):
 
 class Worker(models.Model):
     author = models.CharField(max_length=100, unique=True, null=False)
-    create_tstamp = models.DateTimeField(default=datetime.now())
+    create_tstamp = models.DateTimeField(default=now)
     status = models.ForeignKey(Work_Status)
     comment = models.TextField(null=False)
 
@@ -60,7 +61,7 @@ class Log_Action(models.Model):
 
 class Log(models.Model):
     author = models.CharField(max_length=100, unique=True, null=False)
-    create_tstamp = models.DateTimeField(default=datetime.now())
+    create_tstamp = models.DateTimeField(default=now)
     action = models.ForeignKey(Work_Status)
     comment = models.TextField(null=False)
 

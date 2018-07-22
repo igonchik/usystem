@@ -26,7 +26,8 @@ create table usystem_user (
 	expirecert_tstamp timestamp without time zone not null default now(),
 	home_path text not null default '/home/',
 	public_key text unique,
-	installation_tstamp timestamp without time zone
+	installation_tstamp timestamp without time zone,
+	current_ip cidr
 );
 
 create table usystem_user2group (

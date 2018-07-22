@@ -12,7 +12,7 @@ handler500 = 'usystem_master.errhandlers.error500'
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
     url(r'^$', index, name='index'),
-    url(r'^connectvnc/', connectvnc, name='connectvnc'),
+    url(r'^connectvnc/(?P<uid>\w{0,50})/$', connectvnc, name='connectvnc'),
     url(r'^update/$', update_saw, name='update_saw'),
     url(r'^material/$', material, name='material'),
     url(r'^material/(?P<num>\d+)/$', material, name='material'),

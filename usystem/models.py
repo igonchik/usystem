@@ -28,6 +28,7 @@ class User(models.Model):
     home_path = models.TextField(unique=True, null=False)
     public_key = models.TextField(unique=True, null=False)
     installation_tstamp = models.DateTimeField()
+    current_ip = models.GenericIPAddressField()
 
     class Meta:
         db_table = '"pubview"."usystem_user_view"'

@@ -1,6 +1,8 @@
 adduser uadmin
 
 /etc/hosts usystem_srv <ip>
+mkdir /tmp/usystem
+chmod 0777 /tmp/usystem
 
 #for websock
 apt-get install python3-mox3
@@ -26,3 +28,4 @@ mkdir /var/cache/usystem
 chown uadmin /var/cache/usystem
 mkdir /var/run/usystem
 chown uadmin /var/run/usystem/
+python salt-key --gen-signature --auto-create

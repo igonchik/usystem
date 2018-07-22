@@ -2,6 +2,7 @@
 import time
 from datetime import datetime
 
+DOMAIN_NAME = 'usystems.ru'
 
 def globs(request):
     settings = {'LANGUAGE_CODE': 'ru'}

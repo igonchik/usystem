@@ -50,9 +50,9 @@ def start_stunnel(admin, remote_ip, remote_port):
             print("stunnel is running with pid", stunnel.getpid())
         else:
             raise RuntimeError("Stunnel is not running")
+        os.remove("/tmp/usystem/{0}/stunnel.conf".format(USERNAME))
         rc = stunnel.stop()
         print("stunnel stopped with rc", rc)
-
 
 
 def connectvnc(request, uid):

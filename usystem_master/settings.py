@@ -155,6 +155,6 @@ LOGGING = {
     }
 }
 
-#EMAIL_HOST = '110.1.1.242'
+#EMAIL_HOST = '110.111.111.111'
 #EMAIL_PORT = '25'
-#SERVER_EMAIL = 'special-admin@mss.fso'
+#SERVER_EMAIL = 'igonchik@gmail.com'

@@ -53,7 +53,7 @@ chmod 0640 /home/$username/private/web.key
 chown $username:$username /home/$username/private/web.key
 chmod 0640 /home/$username/certs/web.pem
 chown $username:uuser /home/$username/certs/web.pem
-cat /home/$username/certs/web.pem /home/$username/private/web.key >>  /home/$username/p12/web.p12
+cat /home/$username/certs/web.pem /home/$username/private/web.key >>  /home/$username/p12/web.pem
 chmod 0640 /home/$username/p12/web.p12
 chown $username:$username /home/$username/p12/web.p12
 #Generate master admin

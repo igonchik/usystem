@@ -1,4 +1,6 @@
 #!/bin/bash
+#pip install paramiko
+#pip3 install paramiko
 #use ./start <adminlogin> <groupname> <adminemail>
 #apt-get install libapache2-mod-authnz-external pwauth
 #https://linuxconfig.org/configuring-gmail-as-sendmail-email-relay

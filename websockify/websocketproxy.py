@@ -427,7 +427,7 @@ def select_ssl_version(version):
 
         return SSL_OPTIONS[fallback]
 
-def websockify_init(opt=None):
+def websockify_init():
     # Setup basic logging to stderr.
     logger = logging.getLogger(WebSocketProxy.log_prefix)
     logger.propagate = False
@@ -529,8 +529,7 @@ def websockify_init(opt=None):
             help="Log to syslog server. SERVER can be local socket, "
                  "such as /dev/log, or a UDP host:port pair.")
 
-    if opt:
-        args = opt
+    #opts = '--verify-client  --timeout 5 --ssl-version tlsv1_2 --cert  /var/www/novnc/utils/websockify/web.pem --ssl-only --cafile cacert.pem --auth-plugin ClientCertCNAuth --auth-source client1'
 
     (opts, args) = parser.parse_args()
 

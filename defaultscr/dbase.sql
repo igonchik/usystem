@@ -8,7 +8,7 @@ DROP ROLE IF EXISTS uuser;
 create table usystem_group (
 	id    SERIAL not null  PRIMARY KEY,
 	alias text not null,
-	uid text not null unique,
+	uid text not null,
 	create_tstamp timestamp without time zone not null default now()
 );
 
@@ -33,7 +33,7 @@ create table usystem_user (
 create table usystem_user2group (
         id    SERIAL  PRIMARY KEY,
 	user_id integer not null REFERENCES usystem_user (id),
-	group_id integer not null REFERENCES usystem_user (id)
+	group_id integer not null REFERENCES usystem_group (id)
 );
 
 create table usystem_work_status (
@@ -92,7 +92,8 @@ create or replace rule pubuser_createuser as on insert to usystem_pubworker do i
 create or replace rule updatework as on update to pubview.usystem_worker_view do instead
         update public.usystem_worker set get_tstamp = now(), status_id = NEW.status_id where id = OLD.id;
 create or replace rule insertwork as on insert to  pubview.usystem_worker_view do instead
-        insert into public.usystem_worker (username, work, status_id) values (CURRENT_USER, NEW.work, NEW.status_id);
+        insert into public.usystem_worker (username, work, status_id) values (CURRENT_USER, NEW.work, NEW.status_id)
+        RETURNING *;
 grant select, insert, update on  pubview.usystem_worker_view to umaster;
 grant select, insert, update on  pubview.usystem_worker_view to uminion;
 grant select,update on sequence usystem_worker_id_seq to uuser;

@@ -7,7 +7,7 @@ from django.utils.timezone import now
 
 class Group(models.Model):
     alias = models.CharField(max_length=100, unique=True, null=False)
-    uid = models.TextField(unique=True, null=False)
+    uid = models.TextField(null=False)
     num_stars = models.IntegerField()
     create_tstamp = models.DateTimeField(default=now)
 
@@ -50,7 +50,7 @@ class Worker(models.Model):
     author = models.CharField(max_length=100, unique=True, null=False)
     create_tstamp = models.DateTimeField(default=now)
     status = models.ForeignKey(Work_Status)
-    comment = models.TextField(null=False)
+    work = models.TextField(null=False)
 
     class Meta:
         db_table = '"pubview"."usystem_worker_view"'

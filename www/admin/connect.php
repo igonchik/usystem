@@ -2,6 +2,11 @@
 $dbconn = pg_connect('dbname=usystem user='.$_SERVER['PHP_AUTH_USER'].'');
 
 ?>
+
+    #try:
+    #    pid = subprocess.check_output(["pgrep", "-u", getpass.getuser(), "stunnel"]).strip()
+    #except:
+    #    pid = None
 USER='test1'
 portnum=`netstat -luntp | awk '{print $4}' | cut -d ':' -f2 | sort -k 1 -g | tail -n 1`
 portnum=$((portnum+1))

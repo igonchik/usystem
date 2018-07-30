@@ -26,7 +26,6 @@ class StunnelConfig:
 
     def _read_config(self):
         if self.config_file and os.path.isfile(self.config_file):
-            lines = []
             with open(self.config_file, "rt") as f:
                 lines = f.readlines()
             for line in lines:
@@ -63,11 +62,14 @@ class Stunnel(StunnelConfig):
     def __init__(self, config_file, data=None):
         StunnelConfig.__init__(self, config_file, data)
 
-    def start(self):
+    def start(self, bin_path):
         if self.check() == 1:
             try:
-                config_file = '"%s"' % self.config_file if self.config_file else ""
-                return subprocess.call("stunnel %s" % config_file, shell=True);
+                if os.path.isfile('"%s"' % self.config_file):
+                    config_file = '"%s"' % self.config_file if self.config_file else ""
+                else:
+                    config_file = '%s' % self.config_file if self.config_file else ""
+                return subprocess.Popen([bin_path, config_file])
             except KeyboardInterrupt:
                 pass
         return 1

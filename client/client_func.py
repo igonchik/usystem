@@ -1,0 +1,257 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+"""
+TODO: Disable crypto in paramiko and sshd linux
+"""
+import platform
+import os
+from time import sleep
+import subprocess
+from client.pystunnel import Stunnel
+import socket
+import select
+import paramiko
+import sys
+import threading
+import psutil
+import asyncio
+
+
+class USystem:
+    def __init__(self, remote_port=5934):
+        self.stopFlag = True
+        self.remote_port = remote_port
+        self.remote_ip = '91.216.187.11'
+        self.remote_sshport = 22
+        self.local_port = 5900
+        self.vnc_port = 5899
+        self.current_dir = os.path.dirname(os.path.abspath(__file__))
+
+        if platform.system() == 'Windows':
+            appdata = os.getenv('APPDATA')
+            self.app_dir = os.path.join(appdata, 'usystem')
+            if not os.path.exists(self.app_dir):
+                os.mkdir(self.app_dir)
+            self.stunnel_path = os.path.join(self.app_dir, 'stunnel')
+            if not os.path.exists(os.path.join(self.app_dir, 'stunnel')):
+                os.mkdir(os.path.join(self.app_dir, 'stunnel'))
+            self.vnc_server = 'C:\\Program Files\\USystem\\UConnect\\tvnserver.exe'
+            self.stunnel_server = 'C:\\Program Files\\USystem\\stunnel\\bin\\tstunnel.exe'
+            self._configure_tunnel()
+            self._reconfigure_vnc_win_reg()
+            self.cacert = os.path.join(self.stunnel_path, 'cacert.pem')
+            self.cert = os.path.join(self.stunnel_path, 'minion.pem')
+        elif platform.system() == 'Linux':
+            appdata = os.path.expanduser("~")
+            self.app_dir = os.path.join(appdata, '.usystem')
+            if not os.path.exists(self.app_dir):
+                os.mkdir(self.app_dir)
+            self.stunnel_path = os.path.join(self.app_dir, 'stunnel')
+            if not os.path.exists(os.path.join(self.app_dir, 'stunnel')):
+                os.mkdir(os.path.join(self.app_dir, 'stunnel'))
+            self.vnc_server = '/opt/usystem/uconnect'
+            self.stunnel_server = 'stunnel'
+            self._configure_tunnel()
+            self._reconfigure_vnc_unix()
+            self.cacert = os.path.join(self.stunnel_path, 'cacert.pem')
+            self.cert = os.path.join(self.stunnel_path, 'minion.pem')
+        else:
+            print("Unknown platform")
+            self.vnc_server = None
+            self.stunnel_server = None
+            self.app_dir = None
+            self.tunnel = None
+            self.cacert = None
+            self.cert = None
+
+    @staticmethod
+    def _reconfigure_vnc_win_reg():
+        import winreg
+        subkey = "Software\\TightVNC\\Server"
+        hKey = winreg.CreateKey(winreg.HKEY_CURRENT_USER, subkey)
+        winreg.SetValueEx(hKey, "ExtraPorts", 0, winreg.REG_SZ, "")
+        winreg.SetValueEx(hKey, "QueryTimeout", 0, winreg.REG_DWORD, 0x0000001e)
+        winreg.SetValueEx(hKey, "QueryAcceptOnTimeout", 0, winreg.REG_DWORD, 0x00000000)
+        winreg.SetValueEx(hKey, "LocalInputPriorityTimeout", 0, winreg.REG_DWORD, 0x00000003)
+        winreg.SetValueEx(hKey, "LocalInputPriority", 0, winreg.REG_DWORD, 0x00000000)
+        winreg.SetValueEx(hKey, "BlockRemoteInput", 0, winreg.REG_DWORD, 0x00000000)
+        winreg.SetValueEx(hKey, "BlockLocalInput", 0, winreg.REG_DWORD, 0x00000000)
+        winreg.SetValueEx(hKey, "IpAccessControl", 0, winreg.REG_SZ, "")
+        winreg.SetValueEx(hKey, "RfbPort", 0, winreg.REG_DWORD, 0x0000170b)
+        winreg.SetValueEx(hKey, "HttpPort", 0, winreg.REG_DWORD, 0x000016a8)
+        winreg.SetValueEx(hKey, "DisconnectAction", 0, winreg.REG_DWORD, 0x00000000)
+        winreg.SetValueEx(hKey, "AcceptRfbConnections", 0, winreg.REG_DWORD, 0x00000001)
+        winreg.SetValueEx(hKey, "UseVncAuthentication", 0, winreg.REG_DWORD, 0x00000000)
+        winreg.SetValueEx(hKey, "UseControlAuthentication", 0, winreg.REG_DWORD, 0x00000000)
+        winreg.SetValueEx(hKey, "RepeatControlAuthentication", 0, winreg.REG_DWORD, 0x00000000)
+        winreg.SetValueEx(hKey, "LoopbackOnly", 0, winreg.REG_DWORD, 0x00000001)
+        winreg.SetValueEx(hKey, "AcceptHttpConnections", 0, winreg.REG_DWORD, 0x00000000)
+        winreg.SetValueEx(hKey, "LogLevel", 0, winreg.REG_DWORD, 0x00000000)
+        winreg.SetValueEx(hKey, "EnableFileTransfers", 0, winreg.REG_DWORD, 0x00000001)
+        winreg.SetValueEx(hKey, "RemoveWallpaper", 0, winreg.REG_DWORD, 0x00000001)
+        winreg.SetValueEx(hKey, "UseMirrorDriver", 0, winreg.REG_DWORD, 0x00000001)
+        winreg.SetValueEx(hKey, "EnableUrlParams", 0, winreg.REG_DWORD, 0x00000001)
+        winreg.SetValueEx(hKey, "AlwaysShared", 0, winreg.REG_DWORD, 0x00000000)
+        winreg.SetValueEx(hKey, "NeverShared", 0, winreg.REG_DWORD, 0x00000000)
+        winreg.SetValueEx(hKey, "DisconnectClients", 0, winreg.REG_DWORD, 0x00000001)
+        winreg.SetValueEx(hKey, "PollingInterval", 0, winreg.REG_DWORD, 0x000003e8)
+        winreg.SetValueEx(hKey, "AllowLoopback", 0, winreg.REG_DWORD, 0x00000001)
+        winreg.SetValueEx(hKey, "VideoRecognitionInterval", 0, winreg.REG_DWORD, 0x00000bb8)
+        winreg.SetValueEx(hKey, "GrabTransparentWindows", 0, winreg.REG_DWORD, 0x00000001)
+        winreg.SetValueEx(hKey, "SaveLogToAllUsersPath", 0, winreg.REG_DWORD, 0x00000000)
+        winreg.SetValueEx(hKey, "RunControlInterface", 0, winreg.REG_DWORD, 0x00000000)
+        winreg.SetValueEx(hKey, "IdleTimeout", 0, winreg.REG_DWORD, 0x00000000)
+        winreg.SetValueEx(hKey, "VideoClasses", 0, winreg.REG_SZ, "")
+        winreg.SetValueEx(hKey, "VideoRects", 0, winreg.REG_SZ, "")
+
+    @staticmethod
+    def _reconfigure_vnc_unix():
+        #TODO find TightVNC conf
+        pass
+
+    def update_certs(self, force=False):
+        if force or not os.path.isfile(self.cacert) \
+                or not os.path.isfile(self.cert):
+            #TODO download
+            pass
+
+    def _configure_tunnel(self):
+        stun_data = "debug = 7\n\
+                        output = {2}\n\
+                        [vnc]\n\
+                        CAfile = {0}\n\
+                        accept  = 127.0.0.1:{3}\n\
+                        connect = 127.0.0.1:{4}\n\
+                        key = {1}\n\
+                        cert = {1}\n" \
+            .format(os.path.join(self.stunnel_path, 'cacert.pem'), os.path.join(self.stunnel_path, 'minion.pem'),
+                    os.path.join(self.stunnel_path, 'stun.log'), self.local_port, self.vnc_port)
+        self.tunnel = Stunnel(os.path.join(self.stunnel_path, 'stunnel.conf'), stun_data)
+
+    @staticmethod
+    def find_procs_by_name(name):
+        """
+        Return a list of processes matching 'name'
+        """
+        assert name, name
+        ls = []
+        for p in psutil.process_iter():
+            name_, exe, cmdline = "", "", []
+            try:
+                name_ = p.name()
+                cmdline = p.cmdline()
+                exe = p.exe()
+            except (psutil.AccessDenied, psutil.ZombieProcess):
+                pass
+            except psutil.NoSuchProcess:
+                continue
+            if name == name_ or (len(cmdline) > 0 and cmdline[0] == name) or os.path.basename(exe) == name:
+                ls.append(name)
+        return ls
+
+    def _kill_tunnel(self):
+        if platform.system() == 'Windows':
+            if len(self.find_procs_by_name('tstunnel.exe')) > 0:
+                os.system("taskkill /f /im tstunnel.exe")
+        else:
+            subprocess.call(['pkill', 'stunnel'])
+
+    def _kill_vnc(self):
+        if platform.system() == 'Windows':
+            if len(self.find_procs_by_name('tvnserver.exe')) > 0:
+                subprocess.call([self.vnc_server, '-controlapp', '-shutdown'])
+        else:
+            subprocess.call(['pkill', 'uconnect'])
+
+    def run_tun(self):
+        def handler(chan, host, port):
+            sock = socket.socket()
+            try:
+                sock.connect((host, port))
+            except Exception as e:
+                print("Forwarding request to %s:%d failed: %r" % (host, port, e))
+                return
+
+            print(
+                    "Connected!  Tunnel open %r -> %r -> %r"
+                    % (chan.origin_addr, chan.getpeername(), (host, port))
+            )
+            while True:
+                r, w, x = select.select([sock, chan], [], [])
+                if sock in r:
+                    data = sock.recv(1024)
+                    if len(data) == 0:
+                        break
+                    chan.send(data)
+                if chan in r:
+                    data = chan.recv(1024)
+                    if len(data) == 0:
+                        break
+                    sock.send(data)
+            chan.close()
+            sock.close()
+            print("Tunnel closed from %r" % (chan.origin_addr,))
+
+        async def reverse_forward_tunnel(server_port, remote_host, remote_port, transport):
+            transport.request_port_forward("", server_port)
+            #TODO async
+            while not self.stopFlag:
+                chan = transport.accept(1000)
+                if chan is None:
+                    continue
+                thr = threading.Thread(
+                    target=handler, args=(chan, remote_host, remote_port)
+                )
+                thr.setDaemon(True)
+                thr.start()
+
+        def tunnel(username, listen_port, server, vnc_port, keyfile):
+            look_for_keys = True
+            remote = ['localhost', vnc_port]
+            client = paramiko.SSHClient()
+            client.load_system_host_keys()
+            client.set_missing_host_key_policy(paramiko.WarningPolicy())
+
+            print("Connecting to ssh host %s:%d ..." % (server[0], server[1]))
+            try:
+                client.connect(
+                    server[0],
+                    server[1],
+                    username=username,
+                    key_filename=keyfile,
+                    look_for_keys=look_for_keys,
+                    password=None,
+                )
+            except Exception as e:
+                print("*** Failed to connect to %s:%d: %r" % (server[0], server[1], e))
+                sys.exit(1)
+
+            print(
+                    "Now forwarding remote port %d to %s:%d ..."
+                    % (listen_port, remote[0], remote[1])
+            )
+
+            self.stopFlag = False
+            asyncio.run(reverse_forward_tunnel(
+                listen_port, remote[0], remote[1], client.get_transport()
+            ))
+
+        self._kill_tunnel()
+        self._kill_vnc()
+        rc = self.tunnel.start(self.stunnel_server)
+        if platform.system() == 'Windows':
+            subprocess.Popen([self.vnc_server, '-run'])
+        else:
+            subprocess.Popen([self.vnc_server])
+        sleep(2)
+        if rc.pid:
+            keyfile = os.path.join(self.app_dir, 'stun_rsa.key')
+            tunnel('stun', self.remote_port, [self.remote_ip, self.remote_sshport], self.local_port, keyfile)
+        else:
+            print("Unable to start TLS")
+            self._kill_tunnel()
+            self._kill_vnc()
+
+if __name__ == '__main__':
+    app = USystem()
+    app.run_tun()

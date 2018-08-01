@@ -1,0 +1,159 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+"""
+pip install pyqt5
+pip install pyopenssl
+pip install paramiko
+pip install psutil
+"""
+
+import sys
+import os
+from PyQt5 import QtGui, QtCore, QtWidgets
+from locale import getdefaultlocale
+from client.client_func import USystem
+
+
+class HelpDialog(QtWidgets.QDialog):
+    def closeEvent(self, evnt):
+        evnt.ignore()
+        self.hide()
+
+    def enterPin(self):
+        pass
+
+    def __init__(self, parent=None):
+        QtWidgets.QDialog.__init__(self, parent)
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.stnl = None
+        self.p12name = ''
+        self.pin = ''
+        self.setFixedSize(260, 130)
+        self.setWindowTitle(u'Защищённое соединение')
+        self.setWindowIcon(QtGui.QIcon('/usr/share/icons/fly-astra/64x64/status/dialog-password.png'))
+        self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowMinMaxButtonsHint)
+
+        self.title_pin = QtGui.QLabel(u'Задайте пароль администратора:', self)
+        self.pin_box = QtGui.QLineEdit(self)
+        self.pin_box.setEchoMode(QtGui.QLineEdit.Password)
+        self.send_btn = QtGui.QPushButton(u'Подтвердить')
+        self.send_btn.clicked.connect(self.enterPin)
+        layout = QtGui.QVBoxLayout(self)
+        layout.addWidget(self.title_pin)
+        layout.addWidget(self.pin_box)
+        layout.addWidget(self.send_btn)
+
+        qr = self.frameGeometry()
+        cp = QtWidgets.QDesktopWidget().availableGeometry().center()
+        qr.moveCenter(cp)
+        self.move(qr.topLeft())
+
+
+class UGuiClient:
+    def send_task(self, text):
+        pass
+
+    def get_task(self):
+        pass
+
+    @staticmethod
+    def close(self):
+        sys.exit()
+
+    def helpmedef(self):
+        if self.usystem_gid:
+            self.help_dialog = HelpDialog()
+            self.help_dialog.show()
+        else:
+            QtWidgets.QMessageBox.about(self, u"Ошибка!", u"Не удалось завершить соединение!")
+
+    def admin_logindef(self):
+        if self.usystem_gid:
+            self.send_task('groupout')
+        item, ok = QtWidgets.QInputDialog.getText(self, u"Введите", u"Тест")
+        self.send_task('')
+
+    def admin_logoutdef(self):
+        self.send_task('groupout')
+
+    def touch_allowdef(self):
+        self.security_option = 1
+        self.tools.setTitle(self.statustext_high)
+        self.tools.setIcon(self.statusicon_high)
+        self.trayIcon.setIcon(self.statusicon_high)
+
+    def touch_mediumdef(self):
+        self.security_option = 2
+        self.trayIcon.setIcon(self.statusicon_medium)
+        self.tools.setTitle(self.statustext_medium)
+        self.tools.setIcon(self.statusicon_medium)
+
+    def touch_disdef(self):
+        self.security_option = 3
+        self.tools.setTitle(self.statustext_low)
+        self.tools.setIcon(self.statusicon_low)
+        self.trayIcon.setIcon(self.statusicon_low)
+
+    def get_cert_info(self):
+        import OpenSSL.crypto as crypto
+        st_cert = open(self.usystem.cert, 'rt').read()
+        x509 = crypto.load_certificate(crypto.FILETYPE_PEM, st_cert)
+        return [x509.get_subject().CN, x509.get_subject().O]
+
+    def __init__(self):
+        self.app = QtWidgets.QApplication(sys.argv)
+        self.current_dir = os.path.dirname(os.path.abspath(__file__))
+        self.usystem = USystem(remote_port=5934)
+        locale = getdefaultlocale()
+        translator = QtCore.QTranslator(self.app)
+        translator.load(os.path.join(self.current_dir, 'locale', 'qt_%s.qm' % locale[0]))
+        self.app.installTranslator(translator)
+
+        self.trayIcon = QtWidgets.QSystemTrayIcon()
+        self.statusicon_low = QtGui.QIcon(os.path.join(self.current_dir, 'img', 'security-low.png'))
+        self.statusicon_high = QtGui.QIcon(os.path.join(self.current_dir, 'img', 'security-hight.png'))
+        self.statusicon_medium = QtGui.QIcon(os.path.join(self.current_dir, 'img', 'security-medium.png'))
+        self.statustext_low = u"Запретить соединения"
+        self.statustext_medium = u"Подтверждать соединения"
+        self.statustext_high = u"Принимать соединения"
+        self.security_option = 1
+        info = self.get_cert_info()
+        self.usystem_uid = info[0]
+        self.usystem_gid = info[1]
+        self.trayIcon.setIcon(self.statusicon_high)
+        menu = QtWidgets.QMenu()
+        self.tools = menu.addMenu(self.statusicon_high, self.statustext_high)
+        menu.addSeparator()
+        touch_allow = self.tools.addAction(self.statusicon_high, self.statustext_high)
+        touch_medium = self.tools.addAction(self.statusicon_medium, self.statustext_medium)
+        touch_dis = self.tools.addAction(self.statusicon_low, self.statustext_low)
+        administration = menu.addMenu(u"Настройки")
+        admin_login = administration.addAction(u"Вступить в группу")
+        self.admin_logout = administration.addAction(u"Выйти из группы")
+        helpme = menu.addAction(u"Удаленный помощник")
+        exit_btn = menu.addAction(u"Выйти")
+        menu.addAction(exit_btn)
+        if not self.usystem_gid:
+            self.admin_logout.setEnabled(False)
+
+        self.trayIcon.setContextMenu(menu)
+        helpme.triggered.connect(self.helpmedef)
+        admin_login.triggered.connect(self.admin_logindef)
+        self.admin_logout.triggered.connect(self.admin_logoutdef)
+        touch_allow.triggered.connect(self.touch_allowdef)
+        touch_medium.triggered.connect(self.touch_mediumdef)
+        touch_dis.triggered.connect(self.touch_disdef)
+        exit_btn.triggered.connect(self.close)
+        self.trayIcon.show()
+        if not self.usystem_gid:
+            self.trayIcon.setToolTip(u"Пользователь: {0}\nГруппа: Нет".format(self.usystem_uid))
+        else:
+            self.trayIcon.setToolTip(u"Пользователь: {0}\nГруппа: {1}".format(self.usystem_uid, self.usystem_gid))
+
+    def run(self):
+        sys.exit(self.app.exec_())
+
+
+if __name__ == '__main__':
+    app = UGuiClient()
+    app.run()

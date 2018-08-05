@@ -5,13 +5,20 @@ pip install pyqt5
 pip install pyopenssl
 pip install paramiko
 pip install psutil
+pip install configparser
+pip install aiohttp
+pip install cchardet
+pip install aiodns
 """
 
 import sys
 import os
 from PyQt5 import QtGui, QtCore, QtWidgets
 from locale import getdefaultlocale
-from client.client_func import USystem
+from client.transport import UTransport
+import asyncio
+from multiprocessing import Pool
+import _thread
 
 
 class HelpDialog(QtWidgets.QDialog):
@@ -33,12 +40,12 @@ class HelpDialog(QtWidgets.QDialog):
         self.setWindowIcon(QtGui.QIcon('/usr/share/icons/fly-astra/64x64/status/dialog-password.png'))
         self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowMinMaxButtonsHint)
 
-        self.title_pin = QtGui.QLabel(u'Задайте пароль администратора:', self)
-        self.pin_box = QtGui.QLineEdit(self)
-        self.pin_box.setEchoMode(QtGui.QLineEdit.Password)
-        self.send_btn = QtGui.QPushButton(u'Подтвердить')
+        self.title_pin = QtWidgets.QLabel(u'Задайте пароль администратора:', self)
+        self.pin_box = QtWidgets.QLineEdit(self)
+        self.pin_box.setEchoMode(QtWidgets.QLineEdit.Password)
+        self.send_btn = QtWidgets.QPushButton(u'Подтвердить')
         self.send_btn.clicked.connect(self.enterPin)
-        layout = QtGui.QVBoxLayout(self)
+        layout = QtWidgets.QVBoxLayout(self)
         layout.addWidget(self.title_pin)
         layout.addWidget(self.pin_box)
         layout.addWidget(self.send_btn)
@@ -56,11 +63,13 @@ class UGuiClient:
     def get_task(self):
         pass
 
-    @staticmethod
     def close(self):
+        self.usystem.usysapp.close()
         sys.exit()
 
     def helpmedef(self):
+        pool = Pool(processes=1)
+        pool.apply_async(self.usystem.usysapp.run_tun, [5930])
         if self.usystem_gid:
             self.help_dialog = HelpDialog()
             self.help_dialog.show()
@@ -90,20 +99,23 @@ class UGuiClient:
 
     def touch_disdef(self):
         self.security_option = 3
+        self.usystem.usysapp.close()
         self.tools.setTitle(self.statustext_low)
         self.tools.setIcon(self.statusicon_low)
         self.trayIcon.setIcon(self.statusicon_low)
 
     def get_cert_info(self):
         import OpenSSL.crypto as crypto
-        st_cert = open(self.usystem.cert, 'rt').read()
+        st_cert = open(self.usystem.usysapp.cert, 'rt').read()
         x509 = crypto.load_certificate(crypto.FILETYPE_PEM, st_cert)
         return [x509.get_subject().CN, x509.get_subject().O]
 
     def __init__(self):
         self.app = QtWidgets.QApplication(sys.argv)
         self.current_dir = os.path.dirname(os.path.abspath(__file__))
-        self.usystem = USystem(remote_port=5934)
+        self.usystem = UTransport()
+        _thread.start_new_thread(self.usystem.thread_transport, ())
+
         locale = getdefaultlocale()
         translator = QtCore.QTranslator(self.app)
         translator.load(os.path.join(self.current_dir, 'locale', 'qt_%s.qm' % locale[0]))

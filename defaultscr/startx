@@ -17,6 +17,7 @@
 #apt-get install libapache2-mod-security2
 #create database usystem;
 #cp gost.so /usr/local/lib/engines-1_1/gost.so
+#cat newcacert, newcrl > all cacert.pem :8080
 
 #TODO: script to auto find expire passwd
 #TODO: change passwd script

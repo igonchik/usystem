@@ -4,6 +4,7 @@ DROP GROUP IF EXISTS uminion;
 DROP GROUP IF EXISTS umaster;
 DROP ROLE IF EXISTS uadmin;
 DROP ROLE IF EXISTS uuser;
+DROP ROLE IF EXISTS uminion_;
 
 create table usystem_group (
 	id    SERIAL not null  PRIMARY KEY,
@@ -15,9 +16,8 @@ create table usystem_group (
 create table usystem_user (
 	id    SERIAL not null  PRIMARY KEY,
 	username character varying(100) unique not null,
-	alias text not null default ' ',
-	email text not null unique,
-	uid text not null unique,
+	alias text,
+	email text,
 	register_tstamp timestamp without time zone not null default now(),
 	lastactivity_tstamp timestamp without time zone not null default now(),
 	email_confirmed boolean not null default 'f',
@@ -25,8 +25,7 @@ create table usystem_user (
 	expirepwd_tstamp timestamp without time zone not null default now() + INTERVAL '90 DAY',
 	expirecert_tstamp timestamp without time zone not null default now(),
 	home_path text not null default '/home/',
-	public_key text unique,
-	installation_tstamp timestamp without time zone,
+	version character varying(100) not null default '0.0',
 	current_ip cidr
 );
 
@@ -45,6 +44,7 @@ insert into usystem_work_status values (default, 'Waiting');
 insert into usystem_work_status values (default, 'In progress');
 insert into usystem_work_status values (default, 'PEREODIC');
 insert into usystem_work_status values (default, 'Finished');
+insert into usystem_work_status values (default, 'FinishedERROR');
 
 create table usystem_worker (
 	id    SERIAL  PRIMARY KEY,
@@ -70,8 +70,10 @@ create table usystem_log (
 	comment text not null
 );
 
+create role uminion_ login;
 CREATE GROUP umaster;
 CREATE GROUP uminion;
+alter group uminion add user uminion_;
 grant select on usystem_work_status to uminion;
 grant select on usystem_work_status to umaster;
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -83,16 +85,18 @@ grant usage on schema uadmin to uadmin;
 grant usage on schema pubview to umaster;
 grant usage on schema pubview to uminion;
 
+
 --WORKER RULEs
 create or replace view  pubview.usystem_worker_view as
-	select distinct * from usystem_worker where author like CURRENT_USER or username like CURRENT_USER;
+	select distinct * from usystem_worker where (author like (select username from public.usystem_user
+	  where username like CURRENT_USER and is_master = 't')) or (get_tstamp is null);
 create or replace view usystem_pubworker as select * from public.usystem_worker where 1=2;
 create or replace rule pubuser_createuser as on insert to usystem_pubworker do instead
         insert into public.usystem_worker (username, work, status_id) values ('uadmin', concat('registr ', NEW.username), 4);
 create or replace rule updatework as on update to pubview.usystem_worker_view do instead
         update public.usystem_worker set get_tstamp = now(), status_id = NEW.status_id where id = OLD.id;
 create or replace rule insertwork as on insert to  pubview.usystem_worker_view do instead
-        insert into public.usystem_worker (username, work, status_id) values (CURRENT_USER, NEW.work, NEW.status_id)
+        insert into public.usystem_worker (username, work, status_id) values (new.USERNAME, NEW.work, NEW.status_id)
         RETURNING *;
 grant select, insert, update on  pubview.usystem_worker_view to umaster;
 grant select, insert, update on  pubview.usystem_worker_view to uminion;
@@ -111,27 +115,35 @@ grant select, insert on  pubview.usystem_log_view to uminion;
 --REGISTER RULE
 create or replace view usystem_pubuser as select username, email from usystem_user;
 grant select, insert, update on usystem_pubuser to uuser;
+grant select, insert on usystem_pubuser to uminion;
 create or replace rule pubuser_registration as on insert to usystem_pubuser do instead
-	insert into public.usystem_user (username, email, uid, is_master)
-		values (NEW.username, NEW.email, uuid_generate_v3(uuid_ns_dns(), NEW.email), 't');
+	insert into public.usystem_user (username, email)
+		values (NEW.username, NEW.email);
 create or replace rule pubuser_confirm as on update to usystem_pubuser do instead
-	update public.usystem_user set email_confirmed='t', home_path = concat('/home/', OLD.username) where username like NEW.username;
+	update public.usystem_user set is_master='t', email_confirmed='t', home_path = concat('/home/', OLD.username) where username like NEW.username;
 
 
 --USERs RULEs
 create or replace view  pubview.usystem_user2group_view as
-	select * from usystem_user2group where user_id = (select id from usystem_user where username like CURRENT_USER);
+	select * from usystem_user2group where user_id = (select id from usystem_user where is_master = 'f');
 create or replace view  pubview.usystem_user_view as
-			select * from usystem_user where id in (select user_id from pubview.usystem_user2group_view);
+			select * from usystem_user where is_master = 'f';
 create or replace view  pubview.usystem_group_view as
-			select * from usystem_group where id in (select user_id from pubview.usystem_user2group_view);
+			select * from usystem_group;
 grant select on pubview.usystem_user2group_view to uminion;
 grant select,insert,delete on pubview.usystem_user2group_view to umaster;
 grant select,update on pubview.usystem_user_view to uminion;
 grant select,update on pubview.usystem_user_view to umaster;
 grant select,update,insert on pubview.usystem_group_view to umaster;
 grant select,update on sequence usystem_user_id_seq to uuser;
+grant select,update on sequence usystem_user_id_seq to uminion;
 grant select,update on sequence usystem_user_id_seq to umaster;
 
+create or replace rule pubview_usystem_user_update as on update to pubview.usystem_user_view do instead
+	update public.usystem_user set alias=NEW.alias, lastactivity_tstamp=now(),
+	    expirepwd_tstamp=NEW.expirepwd_tstamp, expirecert_tstamp=NEW.expirecert_tstamp, version=NEW.version,
+	        current_ip = NEW.current_ip where username like NEW.username;
 
+
+--TODO UMASTER USER RULE
 commit;

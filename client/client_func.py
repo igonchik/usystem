@@ -14,19 +14,39 @@ import paramiko
 import sys
 import threading
 import psutil
-import asyncio
+import configparser
 
 
 class USystem:
-    def __init__(self, remote_port=5934):
-        self.stopFlag = True
-        self.remote_port = remote_port
-        self.remote_ip = '91.216.187.11'
-        self.remote_sshport = 22
-        self.local_port = 5900
-        self.vnc_port = 5899
-        self.current_dir = os.path.dirname(os.path.abspath(__file__))
+    def _read_config(self):
+        config = configparser.ConfigParser()
+        if os.path.isfile(os.path.join(self.app_dir, 'usystem.ini')):
+            config.read(os.path.join(self.app_dir, 'usystem.ini'))
+            if 'usystem' in config:
+                try:
+                    self.remote_ip = config['usystem']['remote_ip']
+                    self.local_port = int(config['usystem']['local_port'])
+                    self.vnc_port = int(config['usystem']['vnc_port'])
+                    self.remote_sshport = int(config['usystem']['remote_sshport'])
+                    self.cacert = config['usystem']['cacert_path']
+                    self.cert = config['usystem']['cert_path']
+                    self.transport_port = int(config['usystem']['transport_port'])
+                except:
+                    print('USystem app is not configurated! exit...')
+                    return False
+        return True
 
+    def __init__(self):
+        self.stopFlag = True
+        self.remote_ip = None
+        self.remote_sshport = None
+        self.local_port = None
+        self.vnc_port = None
+        self.cacert = None
+        self.cert = None
+        self.transport_port = 0
+
+        self.current_dir = os.path.dirname(os.path.abspath(__file__))
         if platform.system() == 'Windows':
             appdata = os.getenv('APPDATA')
             self.app_dir = os.path.join(appdata, 'usystem')
@@ -37,10 +57,9 @@ class USystem:
                 os.mkdir(os.path.join(self.app_dir, 'stunnel'))
             self.vnc_server = 'C:\\Program Files\\USystem\\UConnect\\tvnserver.exe'
             self.stunnel_server = 'C:\\Program Files\\USystem\\stunnel\\bin\\tstunnel.exe'
+            self._read_config()
             self._configure_tunnel()
             self._reconfigure_vnc_win_reg()
-            self.cacert = os.path.join(self.stunnel_path, 'cacert.pem')
-            self.cert = os.path.join(self.stunnel_path, 'minion.pem')
         elif platform.system() == 'Linux':
             appdata = os.path.expanduser("~")
             self.app_dir = os.path.join(appdata, '.usystem')
@@ -51,10 +70,9 @@ class USystem:
                 os.mkdir(os.path.join(self.app_dir, 'stunnel'))
             self.vnc_server = '/opt/usystem/uconnect'
             self.stunnel_server = 'stunnel'
+            self._read_config()
             self._configure_tunnel()
             self._reconfigure_vnc_unix()
-            self.cacert = os.path.join(self.stunnel_path, 'cacert.pem')
-            self.cert = os.path.join(self.stunnel_path, 'minion.pem')
         else:
             print("Unknown platform")
             self.vnc_server = None
@@ -63,6 +81,10 @@ class USystem:
             self.tunnel = None
             self.cacert = None
             self.cert = None
+
+    def close(self):
+        self._kill_tunnel()
+        self._kill_vnc()
 
     @staticmethod
     def _reconfigure_vnc_win_reg():
@@ -106,14 +128,12 @@ class USystem:
 
     @staticmethod
     def _reconfigure_vnc_unix():
-        #TODO find TightVNC conf
+        # TODO find TightVNC conf
         pass
 
-    def update_certs(self, force=False):
-        if force or not os.path.isfile(self.cacert) \
-                or not os.path.isfile(self.cert):
-            #TODO download
-            pass
+    def update_certs(self, cert=None, cacert=None):
+        # TODO download
+        pass
 
     def _configure_tunnel(self):
         stun_data = "debug = 7\n\
@@ -124,7 +144,7 @@ class USystem:
                         connect = 127.0.0.1:{4}\n\
                         key = {1}\n\
                         cert = {1}\n" \
-            .format(os.path.join(self.stunnel_path, 'cacert.pem'), os.path.join(self.stunnel_path, 'minion.pem'),
+            .format(self.cacert, self.cert,
                     os.path.join(self.stunnel_path, 'stun.log'), self.local_port, self.vnc_port)
         self.tunnel = Stunnel(os.path.join(self.stunnel_path, 'stunnel.conf'), stun_data)
 
@@ -155,6 +175,7 @@ class USystem:
                 os.system("taskkill /f /im tstunnel.exe")
         else:
             subprocess.call(['pkill', 'stunnel'])
+        sleep(0.5)
 
     def _kill_vnc(self):
         if platform.system() == 'Windows':
@@ -162,8 +183,9 @@ class USystem:
                 subprocess.call([self.vnc_server, '-controlapp', '-shutdown'])
         else:
             subprocess.call(['pkill', 'uconnect'])
+        sleep(0.5)
 
-    def run_tun(self):
+    def run_tun(self, rport):
         def handler(chan, host, port):
             sock = socket.socket()
             try:
@@ -192,10 +214,9 @@ class USystem:
             sock.close()
             print("Tunnel closed from %r" % (chan.origin_addr,))
 
-        async def reverse_forward_tunnel(server_port, remote_host, remote_port, transport):
+        def reverse_forward_tunnel(server_port, remote_host, remote_port, transport):
             transport.request_port_forward("", server_port)
-            #TODO async
-            while not self.stopFlag:
+            while True:
                 chan = transport.accept(1000)
                 if chan is None:
                     continue
@@ -220,7 +241,7 @@ class USystem:
                     username=username,
                     key_filename=keyfile,
                     look_for_keys=look_for_keys,
-                    password=None,
+                    password='',
                 )
             except Exception as e:
                 print("*** Failed to connect to %s:%d: %r" % (server[0], server[1], e))
@@ -232,9 +253,9 @@ class USystem:
             )
 
             self.stopFlag = False
-            asyncio.run(reverse_forward_tunnel(
+            reverse_forward_tunnel(
                 listen_port, remote[0], remote[1], client.get_transport()
-            ))
+            )
 
         self._kill_tunnel()
         self._kill_vnc()
@@ -246,12 +267,13 @@ class USystem:
         sleep(2)
         if rc.pid:
             keyfile = os.path.join(self.app_dir, 'stun_rsa.key')
-            tunnel('stun', self.remote_port, [self.remote_ip, self.remote_sshport], self.local_port, keyfile)
+            tunnel('stun', rport, [self.remote_ip, self.remote_sshport], self.local_port, keyfile)
         else:
             print("Unable to start TLS")
             self._kill_tunnel()
             self._kill_vnc()
 
+
 if __name__ == '__main__':
     app = USystem()
-    app.run_tun()
+    app.run_tun(5930)

@@ -11,7 +11,6 @@ from client.pystunnel import Stunnel
 import socket
 import select
 import paramiko
-import sys
 import threading
 import psutil
 import configparser
@@ -30,6 +29,7 @@ class USystem:
                     self.remote_sshport = int(config['usystem']['remote_sshport'])
                     self.cacert = config['usystem']['cacert_path']
                     self.cert = config['usystem']['cert_path']
+                    self.policy = int(config['usystem']['policy'])
                     self.transport_port = int(config['usystem']['transport_port'])
                 except:
                     print('USystem app is not configurated! exit...')
@@ -45,6 +45,9 @@ class USystem:
         self.cacert = None
         self.cert = None
         self.transport_port = 0
+        self.app_error = True
+        self.task_error = list()
+        self.policy = 0
 
         self.current_dir = os.path.dirname(os.path.abspath(__file__))
         if platform.system() == 'Windows':
@@ -57,7 +60,7 @@ class USystem:
                 os.mkdir(os.path.join(self.app_dir, 'stunnel'))
             self.vnc_server = 'C:\\Program Files\\USystem\\UConnect\\tvnserver.exe'
             self.stunnel_server = 'C:\\Program Files\\USystem\\stunnel\\bin\\tstunnel.exe'
-            self._read_config()
+            self.app_error = self._read_config()
             self._configure_tunnel()
             self._reconfigure_vnc_win_reg()
         elif platform.system() == 'Linux':
@@ -70,7 +73,7 @@ class USystem:
                 os.mkdir(os.path.join(self.app_dir, 'stunnel'))
             self.vnc_server = '/opt/usystem/uconnect'
             self.stunnel_server = 'stunnel'
-            self._read_config()
+            self.app_error = self._read_config()
             self._configure_tunnel()
             self._reconfigure_vnc_unix()
         else:
@@ -81,6 +84,7 @@ class USystem:
             self.tunnel = None
             self.cacert = None
             self.cert = None
+            self.app_error = False
 
     def close(self):
         self._kill_tunnel()
@@ -132,8 +136,40 @@ class USystem:
         pass
 
     def update_certs(self, cert=None, cacert=None):
-        # TODO download
-        pass
+        import OpenSSL.crypto as crypto
+        to = None
+        src = None
+        error = False
+        x509 = None
+        if cert:
+            to = self.cert
+            src = cert
+            print("Updating cacert file...")
+            old_cert = open(self.cert, 'rt').read()
+            x509 = crypto.load_certificate(crypto.FILETYPE_PEM, old_cert)
+        elif cacert:
+            to = self.cacert
+            src = cacert
+            print("Updating cert file...")
+        if cert or cacert:
+            dest = os.open(to, os.O_RDWR | os.O_CREAT)
+            try:
+                x509_new = crypto.load_certificate(crypto.FILETYPE_PEM, src)
+                if x509 and cert:
+                    if x509.get_subject().CN == x509_new.get_subject().CN:
+                        os.write(dest, cert)
+                    else:
+                        print("Can not change username from {0} to {1}...".format(x509.get_subject().CN,
+                                                                                  x509_new.get_subject().CN))
+                        error = True
+                elif cacert or not x509:
+                    os.write(dest, cert)
+            except:
+                print("Unable to update cert file...")
+                error = True
+            finally:
+                os.close(dest)
+        return error
 
     def _configure_tunnel(self):
         stun_data = "debug = 7\n\
@@ -198,7 +234,7 @@ class USystem:
                     "Connected!  Tunnel open %r -> %r -> %r"
                     % (chan.origin_addr, chan.getpeername(), (host, port))
             )
-            while True:
+            while not self.stopFlag:
                 r, w, x = select.select([sock, chan], [], [])
                 if sock in r:
                     data = sock.recv(1024)
@@ -216,15 +252,16 @@ class USystem:
 
         def reverse_forward_tunnel(server_port, remote_host, remote_port, transport):
             transport.request_port_forward("", server_port)
-            while True:
+            chan = None
+            while chan is None:
                 chan = transport.accept(1000)
                 if chan is None:
                     continue
-                thr = threading.Thread(
-                    target=handler, args=(chan, remote_host, remote_port)
-                )
-                thr.setDaemon(True)
-                thr.start()
+            thr = threading.Thread(
+                target=handler, args=(chan, remote_host, remote_port)
+            )
+            thr.setDaemon(True)
+            thr.start()
 
         def tunnel(username, listen_port, server, vnc_port, keyfile):
             look_for_keys = True
@@ -245,14 +282,13 @@ class USystem:
                 )
             except Exception as e:
                 print("*** Failed to connect to %s:%d: %r" % (server[0], server[1], e))
-                sys.exit(1)
+                return False
 
             print(
                     "Now forwarding remote port %d to %s:%d ..."
                     % (listen_port, remote[0], remote[1])
             )
 
-            self.stopFlag = False
             reverse_forward_tunnel(
                 listen_port, remote[0], remote[1], client.get_transport()
             )
@@ -267,7 +303,11 @@ class USystem:
         sleep(2)
         if rc.pid:
             keyfile = os.path.join(self.app_dir, 'stun_rsa.key')
-            tunnel('stun', rport, [self.remote_ip, self.remote_sshport], self.local_port, keyfile)
+            self.stopFlag = True
+            return_= tunnel('stun', rport, [self.remote_ip, self.remote_sshport], self.local_port, keyfile)
+            if not return_:
+                self._kill_tunnel()
+                self._kill_vnc()
         else:
             print("Unable to start TLS")
             self._kill_tunnel()

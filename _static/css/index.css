@@ -9,3 +9,15 @@
 .h-menu {
     margin-left: 300px;
 }
+
+.tree-checked {
+    font-weight: bold;
+}
+
+.notshow {
+    display: none;
+}
+
+#minion-table tbody tr {
+    cursor: pointer;
+}

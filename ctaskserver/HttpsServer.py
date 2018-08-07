@@ -26,7 +26,6 @@ from aiopg.sa.exc import *
 import ssl
 from aiohttp.web import middleware
 from celery import Celery
-import uuid
 import sqlalchemy as sa
 from datetime import datetime
 
@@ -37,6 +36,12 @@ metadata = sa.MetaData()
 pubuser = sa.Table('usystem_pubuser', metadata,
                    sa.Column('username', sa.String(100), nullable=False),
                    sa.Column('email', sa.Text))
+
+programs = sa.Table('usystem_programm_view', metadata,
+                    sa.Column('username', sa.String(100), nullable=False),
+                    sa.Column('name', sa.String(100), nullable=False),
+                    sa.Column('classname_id', sa.Integer, nullable=False),
+                    schema='pubview')
 
 user_view = sa.Table('usystem_user_view', metadata,
                      sa.Column('current_ip', sa.String(255)),
@@ -64,6 +69,7 @@ work_view = sa.Table('usystem_worker_view', metadata,
                      sa.Column('id', sa.Integer, nullable=False),
                      schema='pubview'
                      )
+
 
 class USystemServer:
     def __init__(self, psql_server, ssl_ciphers=None, debug=False):
@@ -162,6 +168,18 @@ class USystemServer:
                 except ResourceClosedError:
                     if self.debug:
                         print("Append new minion {0}...".format(request['remote_user']))
+                if 'platform' in data.keys():
+                    try:
+                        await connection.scalar(programs.insert().values(username=request['remote_user'],
+                                                                         classname_id=1, name=data['platform']))
+                    except ResourceClosedError:
+                        if self.debug:
+                            print("Append new program {0}...".format(request['remote_user']))
+
+            #update user status
+            query = sa.update(user_view).where(user_view.c.username == request['remote_user']). \
+                values(version=data['version'])
+            await connection.execute(query)
 
             # update works status
             if 'task' in data.keys() and len(data['task']) > 1:
@@ -184,7 +202,19 @@ class USystemServer:
                     elif 'CERTUPDATE' in rec[1]:
                         query = sa.update(work_view).where(work_view.c.id == int(rec[0])).values(status_id=2)
                         await connection.execute(query)
-                        return_.update({'certfile': [int(rec[0]), rec[1]]})
+                        try:
+                            st_cert = open(rec[1][10:], 'rt').read()
+                            return_.update({'certfile': [int(rec[0]), st_cert]})
+                        except:
+                            print("Can not open cert file in path".format(rec[1][10:]))
+                    elif 'CACERTUPDATE' in rec[1]:
+                        query = sa.update(work_view).where(work_view.c.id == int(rec[0])).values(status_id=2)
+                        await connection.execute(query)
+                        try:
+                            st_cert = open(rec[1][12:], 'rt').read()
+                            return_.update({'cacertfile': [int(rec[0]), st_cert]})
+                        except:
+                            print("Can not open cacert file in path".format(rec[1][12:]))
             return return_
 
     async def hello(self, request):
@@ -198,4 +228,4 @@ class USystemServer:
 
 
 if __name__ == '__main__':
-    USystemServer('192.168.1.25', debug=True)
+    USystemServer('db.usystem.com', debug=True)

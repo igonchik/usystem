@@ -13,9 +13,5 @@ urlpatterns = [
     url(r'^admin/', admin.site.urls),
     url(r'^$', index, name='index'),
     url(r'^connectvnc/(?P<uid>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/$', connectvnc, name='connectvnc'),
-    url(r'^update/$', update_saw, name='update_saw'),
-    url(r'^material/$', material, name='material'),
-    url(r'^material/(?P<num>\d+)/$', material, name='material'),
-    url(r'^zakaz/$', zakaz, name='zakaz'),
-    url(r'^zakaz/(?P<num>\d+)/$', zakaz, name='zakaz'),
+    url(r'^control/', control, name='control'),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

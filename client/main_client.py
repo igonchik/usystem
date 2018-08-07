@@ -9,6 +9,7 @@ pip install configparser
 pip install aiohttp
 pip install cchardet
 pip install aiodns
+pip install openssl
 """
 
 import sys

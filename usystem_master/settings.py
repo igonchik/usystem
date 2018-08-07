@@ -19,8 +19,8 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
         'NAME': 'usystem',
-        'HOST': 'dev1',
-        'USER': 'test1',
+        'HOST': 'db.usystem.com',
+        'USER': 'utest',
     }
 }
 

@@ -9,7 +9,7 @@ DROP ROLE IF EXISTS uminion_;
 create table usystem_group (
 	id    SERIAL not null  PRIMARY KEY,
 	alias text not null,
-	uid text not null,
+	uid text not null default uuid_generate_v1mc(),
 	create_tstamp timestamp without time zone not null default now()
 );
 
@@ -31,14 +31,31 @@ create table usystem_user (
 
 create table usystem_user2group (
         id    SERIAL  PRIMARY KEY,
-	user_id integer not null REFERENCES usystem_user (id),
-	group_id integer not null REFERENCES usystem_group (id)
+	      user_id integer not null REFERENCES usystem_user (id) on delete cascade,
+	      group_id integer not null REFERENCES usystem_group (id)  on delete cascade
 );
 
 create table usystem_work_status (
         id    SERIAL not null  PRIMARY KEY,
-	name text not null
+	      name text not null
 );
+
+create table usystem_programm_class (
+        id    SERIAL not null  PRIMARY KEY,
+	      name text not null
+);
+
+insert into usystem_programm_class values (default, 'OS');
+
+create table usystem_programm (
+        id    SERIAL  PRIMARY KEY,
+	      username character varying(100) not null,
+	      classname_id integer not null REFERENCES usystem_programm_class (id)  on delete cascade,
+	      name character varying(100) not null
+);
+
+grant select on usystem_programm_class to umaster;
+grant select on usystem_programm_class to uminion;
 
 insert into usystem_work_status values (default, 'Waiting');
 insert into usystem_work_status values (default, 'In progress');
@@ -124,17 +141,29 @@ create or replace rule pubuser_confirm as on update to usystem_pubuser do instea
 
 
 --USERs RULEs
-create or replace view  pubview.usystem_user2group_view as
-	select * from usystem_user2group where user_id = (select id from usystem_user where is_master = 'f');
+
 create or replace view  pubview.usystem_user_view as
-			select * from usystem_user where is_master = 'f';
+			select * from usystem_user where is_master = 'f' or id in (select user_id from usystem_user2group
+			        where user_id = (select id from usystem_user where username like CURRENT_USER))
+			          or username like CURRENT_USER;
+
 create or replace view  pubview.usystem_group_view as
-			select * from usystem_group;
+			select * from usystem_group where id in (select group_id from usystem_user2group
+			        where user_id in (select id from usystem_user where username like CURRENT_USER and is_master = 't'));
+
+create or replace view  pubview.usystem_user2group_view as
+	select * from usystem_user2group where group_id in (select id from pubview.usystem_group_view);
+
+create or replace view  pubview.usystem_programm_view as
+			select * from usystem_programm;
+grant insert on pubview.usystem_programm_view to uminion;
+grant select,insert,update,delete on pubview.usystem_programm_view to umaster;
+
 grant select on pubview.usystem_user2group_view to uminion;
 grant select,insert,delete on pubview.usystem_user2group_view to umaster;
 grant select,update on pubview.usystem_user_view to uminion;
 grant select,update on pubview.usystem_user_view to umaster;
-grant select,update,insert on pubview.usystem_group_view to umaster;
+grant select,update,insert,delete on pubview.usystem_group_view to umaster;
 grant select,update on sequence usystem_user_id_seq to uuser;
 grant select,update on sequence usystem_user_id_seq to uminion;
 grant select,update on sequence usystem_user_id_seq to umaster;
@@ -145,5 +174,42 @@ create or replace rule pubview_usystem_user_update as on update to pubview.usyst
 	        current_ip = NEW.current_ip where username like NEW.username;
 
 
---TODO UMASTER USER RULE
+--programm rule
+grant select,update on sequence usystem_programm_id_seq to umaster;
+grant select,update on sequence usystem_programm_id_seq to uminion;
+create or replace rule pubview_usystem_programm_insert as on insert to pubview.usystem_programm_view do instead
+	insert into public.usystem_programm (username, classname_id, name)
+		values (NEW.username, NEW.classname_id, NEW.name);
+create or replace rule pubview_usystem_programm_update as on update to pubview.usystem_programm_view do instead
+	update public.usystem_programm set username=NEW.username, classname_id=NEW.classname_id, name=NEW.name where id= OLD.id;
+create or replace rule pubview_usystem_programm_delete as on delete to pubview.usystem_programm_view do instead
+  delete from public.usystem_programm where id= OLD.id;
+
+
+--GROUP RULES
+create or replace rule usystem_group_view_create as on insert to pubview.usystem_group_view do instead
+  insert into public.usystem_group (alias) values (NEW.alias);
+create or replace rule usystem_group_view_update as on update to pubview.usystem_group_view do instead
+  update public.usystem_group set alias = NEW.alias where id = (select group_id from usystem_user2group
+      where user_id in (select id from public.usystem_user where is_master='t' and username like CURRENT_USER
+  ) and group_id = OLD.id);
+create or replace rule usystem_group_view_delete as on delete to pubview.usystem_group_view do instead
+  delete from public.usystem_group where id = (select group_id from usystem_user2group where user_id in (
+    select id from public.usystem_user where is_master='t' and username like CURRENT_USER
+  ) and group_id = OLD.id);
+
+create or replace rule rule_user2group_insert as on insert to pubview.usystem_user2group_view do instead
+  insert into public.usystem_user2group (user_id, group_id) values (
+      NEW.user_id,
+      NEW.group_id
+  );
+create or replace rule rule_user2group_delete as on update to pubview.usystem_user2group_view do instead
+  delete from public.usystem_user2group where
+      id = (select group_id from usystem_user2group where user_id in (
+        select id from public.usystem_user where is_master='t' and username like CURRENT_USER
+      ) and group_id = OLD.id);
+
+grant select, update on usystem_group_id_seq to umaster;
+grant select, update on usystem_user2group_id_seq to umaster;
+
 commit;

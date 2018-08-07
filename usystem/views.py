@@ -22,7 +22,10 @@ import os, getpass
 import socket
 from usystem.models import *
 import time
+from django.http import JsonResponse
 
+
+__USERNAME = 'utest'
 
 def get_open_port(count=1):
     ports = list()
@@ -139,23 +142,52 @@ def connectvnc(request, uid):
         return redirect('https://connect.{0}:{1}'.format(config.DOMAIN_NAME, port_num))
     return render(request, 'errors/vnc_error.html', {'minion': minion})
 
-@transaction.atomic
-def material(request, num=0):
-    pass
 
 @transaction.atomic
-def zakaz(request, num=0):
-    pass
+def _control(user, num=0):
+    if num == 0:
+        groups = Group.objects.filter(user2group__user_id=user.id).values_list('id', flat=True)
+    else:
+        groups = Group.objects.filter(id=num).values_list('id', flat=True)
+    groups_id = list(groups)
+    uusers = User.objects.filter(user2group__group__id__in=groups_id)\
+        .prefetch_related('user2group_set__group').prefetch_related('programm_set__classname')
+    response = {'minion': [], 'master': []}
+    for rec in uusers:
+        if rec.is_master:
+            response['master'].append(rec)
+        else:
+            response['minion'].append(rec)
+    return response
+
 
 @transaction.atomic
-def print_saw(request, num=0):
-    pass
+def control(request, cur_group=0):
+    user = get_user(__USERNAME)
+    groups = Group.objects.filter(user2group__user_id=user.id)
+    response = _control(user, cur_group)
+    filtered = False
+    search = ''
+    group = 0
+    if 'filtered' in request.GET:
+        filtered = True
+    if 'search' in request.GET:
+        search = request.GET['search']
+    if 'group' in request.GET:
+        group = int(request.GET['group'])
+    response.update({'user': user, 'groups': groups, 'current_group_id': cur_group, 'filtered': filtered,
+                     'search': search, 'group': group})
+    return render(request, 'ajax_miniontable.html', response)
+
+
+def get_user(username):
+    return User.objects.get(username=username)
+
 
 @transaction.atomic
-def update_saw(request):
-    pass
-
-@transaction.atomic
-def index(request):
-    start_stunnel('192.168.1.1', '5900')
-    return render(request, 'main.html', {})
+def index(request, cur_group=0):
+    user = get_user(__USERNAME)
+    groups = Group.objects.filter(user2group__user_id=user.id)
+    response = _control(user, cur_group)
+    response.update({'user': user, 'groups': groups, 'current_group_id': cur_group})
+    return render(request, 'main.html', response)

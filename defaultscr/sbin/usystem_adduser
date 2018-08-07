@@ -13,7 +13,7 @@ pass=`apg -n 1 -M SNLC -m 8 -x 10`
 echo "$username:$pass" | chpasswd
 chage -M 90 $username
 echo "update usystem_worker set get_tstamp = now() where get_tstamp is null and author = 'uuser' and work like 'registr $username'; create role \"$username\" login; create schema \"$username\"; grant usage on schema \"$username\" to \"$username\"; alter group umaster add user \"$username\";" | su postgres -- -c "psql -d usystem"
-
+echo "insert into "
 email=`echo "select email from usystem_user where username like '$username';" | su postgres -- -c  "psql -d usystem --no-align --tuples-only"`
 
 if [ -n "$email" ]; then

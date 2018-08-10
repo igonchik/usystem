@@ -700,7 +700,7 @@ class WebSockifyServer(object):
                 raise
             except Exception:
                 _, exc, _ = sys.exc_info()
-                self.msg("handler exception: %s" % str(exc))
+                self.msg("handler exception1: %s" % str(exc))
                 self.vmsg("exception", exc_info=True)
         finally:
 

@@ -17,6 +17,7 @@ class ProgrammClass(models.Model):
 class Group(models.Model):
     alias = models.CharField(max_length=100, null=False)
     uid = models.TextField(null=False)
+    author = models.CharField(max_length=100, null=False)
     create_tstamp = models.DateTimeField(default=now)
 
     class Meta:
@@ -76,6 +77,14 @@ class Worker(models.Model):
 
     class Meta:
         db_table = '"pubview"."usystem_worker_view"'
+
+
+class PortMap(models.Model):
+    work = models.ForeignKey(Worker, on_delete=CASCADE)
+    port_num = models.IntegerField(null=False)
+
+    class Meta:
+        db_table = '"pubview"."usystem_portmap_view"'
 
 
 class Log_Action(models.Model):

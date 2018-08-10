@@ -1,0 +1,6 @@
+<select id="group_selector" data-role="select" data-prepend="<span>Группа</span>">
+    <option value="0">Все группы</option>
+    {% for rec in groups %}
+        <option value="{{ rec.id }}">{{ rec.alias }}</option>
+    {% endfor %}
+</select>

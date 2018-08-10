@@ -14,10 +14,27 @@
     font-weight: bold;
 }
 
-.notshow {
-    display: none;
+.notshow, .column-name-id, .column-name-group_id, .foot-column-name-group_id, .foot-column-name-id {
+    display: none !important;
+}
+
+.showTop {
+    top: 10% !important;
 }
 
 #minion-table tbody tr {
     cursor: pointer;
+}
+
+.controls {
+    margin-bottom: 25px;
+}
+
+.controls .button {
+    margin-right: 10px;
+}
+
+.v-menu-td {
+    vertical-align: top;
+    width: 300px;
 }

@@ -1,13 +1,12 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 """
-pip install aiojobs
-pip install  aiopg
-pip  install aioredis
+pip3 install aiojobs
+pip3 install  aiopg
+pip3  install aioredis
 patch aiopg.connection.py #109 self._conn = psycopg2.connect(dsn, async_=True, **kwargs)
 patch aiopg.utils.py #18     ensure_future = asyncio.async_
-pip install sqlalchemy
-pip install psycopg2-binary
+pip3 install sqlalchemy;pip3 install psycopg2-binary
 
 for redis:
 amqp==2.2.1
@@ -36,6 +35,11 @@ metadata = sa.MetaData()
 pubuser = sa.Table('usystem_pubuser', metadata,
                    sa.Column('username', sa.String(100), nullable=False),
                    sa.Column('email', sa.Text))
+
+portmap = sa.Table('usystem_portmap_view', metadata,
+                   sa.Column('work_id', sa.Integer, nullable=False),
+                   sa.Column('port_num', sa.Integer, nullable=False),
+                   schema='pubview')
 
 programs = sa.Table('usystem_programm_view', metadata,
                     sa.Column('username', sa.String(100), nullable=False),
@@ -162,7 +166,7 @@ class USystemServer:
             res = await connection.execute(query)
             return_ = {}
             if res.rowcount == 0:
-                #create new user
+                # create new user
                 try:
                     await connection.scalar(pubuser.insert().values(username=request['remote_user']))
                 except ResourceClosedError:
@@ -176,15 +180,17 @@ class USystemServer:
                         if self.debug:
                             print("Append new program {0}...".format(request['remote_user']))
 
-            #update user status
+            # update user status
             query = sa.update(user_view).where(user_view.c.username == request['remote_user']). \
-                values(version=data['version'])
+                values(version=data['version'], current_ip=request.remote)
             await connection.execute(query)
 
             # update works status
-            if 'task' in data.keys() and len(data['task']) > 1:
+            if 'task' in data.keys() and len(data['task']) > 0:
+                print(data['task'])
                 for rec in data['task']:
-                    query = sa.update(work_view).where(work_view.c.id == int(rec[0])). \
+                    query = sa.update(work_view).where(work_view.c.id == int(rec[0])).\
+                        where(work_view.c.status_id < 4). \
                         where(work_view.c.username == request['remote_user']).values(status_id=int(rec[1]))
                     await connection.execute(query)
 
@@ -196,7 +202,7 @@ class USystemServer:
                 tasks = await res.fetchall()
                 for rec in tasks:
                     if 'VNCCONNECT' in rec[1]:
-                        query = sa.update(work_view).where(work_view.c.id == int(rec[0])).values(status_id=4)
+                        query = sa.update(work_view).where(work_view.c.id == int(rec[0])).values(status_id=2)
                         await connection.execute(query)
                         return_.update({'vnc': [int(rec[0]), int(rec[1][10:])]})
                     elif 'CERTUPDATE' in rec[1]:

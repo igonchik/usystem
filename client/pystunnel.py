@@ -69,7 +69,10 @@ class Stunnel(StunnelConfig):
                     config_file = '"%s"' % self.config_file if self.config_file else ""
                 else:
                     config_file = '%s' % self.config_file if self.config_file else ""
-                return subprocess.Popen([bin_path, config_file])
+                try:
+                    rc = subprocess.Popen([bin_path, config_file])
+                except:
+                    rc = None
             except KeyboardInterrupt:
                 pass
         return 1

@@ -18,24 +18,39 @@ from django.core.mail import send_mail
 from copy import deepcopy
 from django.db.models import Count
 from django.db import connection
-import os, getpass
+import os
+import getpass
 import socket
 from usystem.models import *
 import time
 from django.http import JsonResponse
+from usystem.common_funcs import safe_query
 
 
 __USERNAME = 'utest'
 
-def get_open_port(count=1):
+
+def get_open_port(worker, count=1):
     ports = list()
     socks = list()
-    for i in range(0, count):
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.bind(("", 0))
-        s.listen(1)
-        ports.append(s.getsockname()[1])
-        socks.append(s)
+    i = 0
+    while i < count:
+        allports = list(PortMap.objects.all().values_list('port_num', flat=True))
+        for port_num in range(1025, 65534):
+            if port_num not in allports:
+                try:
+                    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    s.bind(("", int(port_num)))
+                    s.listen(1)
+                    ports.append(s.getsockname()[1])
+                    socks.append(s)
+                    portmap = PortMap(work_id=worker, port_num=s.getsockname()[1])
+                    portmap.save()
+                    i += 1
+                    break
+                except:
+                    print('Port {0} all ready in use!'.format(port_num))
+
     for s in socks:
         s.close()
     return ports
@@ -73,111 +88,154 @@ def start_stunnel(remote_ip, remote_port):
 
 
 def connectvnc(request, uid):
-    def start_web():
-        class RecordWeb(object):
-            __slots__ = "record", "timeout", "cert", "ssl_only", "verify_client", "cafile", "ssl_version",\
-            "unix_target", "web", "auth_plugin", "auth_source", "ssl_options", "listen_port", "remote", \
-            "log_file", "syslog", "verbose", "token_source", "token_plugin", "host_token", "web_auth", \
-            "target_cfg", "wrap_cmd", "inetd", "listen_host", "listen_port", "wrap_cmd", "target_host",\
-                        "target_port", "local", "libserver"
-        local_port = start_stunnel(remote_ip, remote_port)
-        local_ip = socket.gethostbyname(socket.gethostname())
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        opts = RecordWeb()
-        opts.inetd = None
-        opts.libserver = None
-        opts.unix_target = None
-        opts.listen_host = None
-        opts.listen_port = None
-        opts.wrap_cmd = None
-        opts.target_host = None
-        opts.target_port = None
-        opts.log_file = None
-        opts.syslog = None
-        opts.verbose = None
-        opts.token_source = None
-        opts.token_plugin = None
-        opts.host_token = None
-        opts.web_auth = None
-        opts.target_cfg = None
-        opts.wrap_cmd = None
-        opts.web = os.path.join(base_dir, 'templates', 'websockify')
-        opts.local = '{0}:{1}'.format(local_ip, local_port)
-        opts.ssl_version ='tlsv1_2'
-        opts.verify_client = True
-        opts.ssl_options = None
-        opts.cert = '/var/{0}/p12/web.pem'.format(getpass.getuser())
-        opts.timeout = 10
-        opts.ssl_only = True
-        opts.cafile ='/var/{0}/cacert.pem'.format(getpass.getuser())
-        opts.auth_plugin = 'ClientCertCNAuth'
-        opts.auth_source = 'test1'
-        opts.remote = '{0}:{1}'.format(remote_ip, remote_port)
-        import websockify
-        s.close()
-        websockify.websocketproxy.websockify_init(opts)
-
-    minion = User.objects.get(uid=uid)
-    remote_ip = minion.current_ip
-    new_work = Worker(work='vncconnect {0}'.format(uid), status_id=1)
+    import pwd
+    user = get_user(__USERNAME)
+    minion = User.objects.prefetch_related('user2group_set').get(id=uid)
+    new_work = Worker(status_id=1, username=minion.username)
+    new_work.save()
+    port = get_open_port(new_work.id, 3)
+    new_work.work = 'VNCCONNECT{0}'.format(port[0])
     new_work.save()
     time_index = 0
-    remote_start = False
-    while time_index < 6 and not remote_start:
+    while time_index < 30:
         time.sleep(1)
         time_index += 1
-        if Worker.objects.get(id=new_work.id).status_id > 1:
-            remote_start = True
+        if Worker.objects.get(id=new_work.id).status_id == 4:
+            # TODO stun run on accept port[1] connect port[0]
+            group_list = list(minion.user2group_set.all().values_list('group_id', flat=True))
+            user_list = list(user.user2group_set.all().filter(group_id__in=group_list).values_list('user_id',
+                                                                                                   flat=True))
+            users = list(User.objects.filter(id__in=user_list).filter(is_master=True).values_list('username',
+                                                                                                  flat=True))
+            websockify_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            certpath = os.path.join(user.home_path, 'p12', 'web.pem')
+            cafile = os.path.join(user.home_path, 'cacert.pem')
+            certpath = os.path.join(websockify_dir, 'ctaskserver', 'testcerts', 'usystem.com.pem')
+            cafile = os.path.join(websockify_dir, 'ctaskserver', 'capath', 'cacert.pem')
+            conf_path = '{1}stunnel{0}_vnc.conf'.format(pwd.getpwnam(user.username).pw_uid,
+                                                                          user.home_path)
+            stunnel_conf = "setuid={0}\nclient = yes\n" \
+                           "pid={1}stunnel4{0}_vnc.pid\n" \
+                           "[vnc]\n" \
+                           "verify = 2\n" \
+                           "sslVersion = TLSv1\n" \
+                           "accept  = 127.0.0.1:{2}\n" \
+                           "connect = 127.0.0.1:{3}\n" \
+                           "cert = {1}p12/web.pem\n" \
+                           "key = {1}p12/web.pem\n" \
+                           "CAfile = {1}cacert.pem\n".format(pwd.getpwnam(user.username).pw_uid,
+                                                                    user.home_path,
+                                                                    port[1], port[0])
+            with open(conf_path, 'w') as the_file:
+                the_file.write(stunnel_conf)
+            stun = subprocess.Popen(['stunnel', conf_path], close_fds=True)
+            websock = subprocess.Popen(['python3', os.path.join(websockify_dir, 'websockify', 'run'),
+                                        '--web', os.path.join(websockify_dir, 'templates', 'websockify'),
+                                        '0.0.0.0:{0}'.format(port[2]), '127.0.0.1:{0}'.format(port[1]),
+                                        '--verify-client',
+                                        '--ssl-version', 'tlsv1_2',
+                                        '--cert', certpath,
+                                        '--ssl-only',
+                                        '--cafile', cafile,
+                                        '--auth-plugin', 'ClientCertCNAuth',
+                                        '--auth-source', ' '.join(rec for rec in users)
+                                        ], close_fds=True)
+            if not websock.pid or not stun.pid:
+                return HttpResponse('Error', status=500)
+            host = request.META['HTTP_HOST']
+            if ':' in request.META['HTTP_HOST']:
+                host = request.META['HTTP_HOST'].split(':')[0]
+            host = 'usystem.com'
+            time.sleep(2)
+            return HttpResponse('https://{0}:{1}'.format(host, port[2]))
 
-    if remote_start or 1==1:
-        remote_port = 5900
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.bind(("", 0))
-        s.listen(1)
-        port_num = s.getsockname()[1]
-        from multiprocessing import Process
-        pool = Process(target=start_web)
-        pool.start()
-        time.sleep(1)
-        return redirect('https://connect.{0}:{1}'.format(config.DOMAIN_NAME, port_num))
-    return render(request, 'errors/vnc_error.html', {'minion': minion})
+    new_work.status_id = 5
+    new_work.save()
+    PortMap.objects.filter(work_id=new_work.id).delete()
+    return HttpResponse('Error', status=500)
 
 
-@transaction.atomic
-def _control(user, num=0):
-    if num == 0:
-        groups = Group.objects.filter(user2group__user_id=user.id).values_list('id', flat=True)
-    else:
-        groups = Group.objects.filter(id=num).values_list('id', flat=True)
-    groups_id = list(groups)
-    uusers = User.objects.filter(user2group__group__id__in=groups_id)\
-        .prefetch_related('user2group_set__group').prefetch_related('programm_set__classname')
-    response = {'minion': [], 'master': []}
-    for rec in uusers:
-        if rec.is_master:
-            response['master'].append(rec)
-        else:
-            response['minion'].append(rec)
-    return response
-
-
-@transaction.atomic
-def control(request, cur_group=0):
+def minion_json(request):
+    """
+    header format:
+    {
+      "name": ..., // string
+      "title": ..., // string
+      "sortable": ..., // true or false
+      "sortDir": ..., // string - "asc" or "desc"
+      "size": ..., // int, column width
+      "cls": ..., // additional class for header cell
+      "clsColumn": ...,  // additional class for related cells in table body
+      "format": ... // string define column format for right sorting
+    }
+    footer format:
+    "footer": [
+    {
+      "name": ..., // string
+      "title": ..., // string
+      "cls": ..., // additional class for header cell
+    },
+    """
     user = get_user(__USERNAME)
-    groups = Group.objects.filter(user2group__user_id=user.id)
-    response = _control(user, cur_group)
-    filtered = False
-    search = ''
-    group = 0
-    if 'filtered' in request.GET:
-        filtered = True
-    if 'search' in request.GET:
-        search = request.GET['search']
-    if 'group' in request.GET:
-        group = int(request.GET['group'])
-    response.update({'user': user, 'groups': groups, 'current_group_id': cur_group, 'filtered': filtered,
-                     'search': search, 'group': group})
-    return render(request, 'ajax_miniontable.html', response)
+    groups = Group.objects.filter(user2group__user_id=user.id).values_list('id', flat=True)
+    groups_id = list(groups)
+    uusers = User.objects.filter(user2group__group__id__in=groups_id) \
+        .prefetch_related('user2group_set__group').prefetch_related('programm_set__classname')
+    response = dict()
+    h = list()
+    h.append({'name': 'name', 'title': 'Name', 'sortable': True, 'sortDir': 'asc', 'format': 'string'})
+    h.append({'name': 'group', 'title': 'Group', 'sortable': True, 'format': 'string'})
+    h.append({'name': 'version', 'title': 'USYS version', 'sortable': True, 'format': 'string'})
+    h.append({'name': 'os', 'title': 'OS', 'sortable': True, 'format': 'string'})
+    h.append({'name': 'creation', 'title': 'Creation date', 'sortable': True, 'format': 'date',
+              'formatMask': 'mm.dd.yyyy'})
+    h.append({'name': 'state', 'title': 'State', 'sortable': True})
+    h.append({'name': 'id', 'title': 'ID', 'clsColumn': 'notshow'})
+    h.append({'name': 'group_id', 'title': 'GROUP_ID', 'clsColumn': 'notshow'})
+    f = list()
+    for rec in h:
+        f.append({'name': rec['name'], 'title': rec['title']})
+    response.update({'header': h})
+    response.update({'footer': f})
+    data = list()
+    for rec in uusers:
+        if not rec.is_master:
+            data.append([
+                rec.username if not rec.alias else rec.alias,
+                ', '.join(group.group.alias for group in rec.user2group_set.all()),
+                rec.version,
+                rec.programm_set.filter(classname_id=1)[0].name if rec.programm_set.filter(classname_id=1).exists()
+                else '',
+                rec.register_tstamp.strftime("%d.%m.%Y"),
+                0 if not rec.isactive() else 1,
+                rec.id,
+                rec.user2group_set.all()[0].group.id
+            ])
+    response.update({'data': data})
+    return JsonResponse(response)
+
+
+@transaction.atomic
+def add_group(request, num=0):
+    user = get_user(__USERNAME)
+    if request.method == 'POST':
+        post = safe_query(request.POST)
+        if 'grname' in post and post['grname'] != '':
+            if 'grid' in post and post['grid'] != '':
+                gr = Group.objects.get(id=int(post['grid']))
+            else:
+                gr = Group()
+            gr.alias = post['grname']
+            gr.save()
+            if 'grid' in post and post['grid'] != '':
+                u2g = User2Group(user_id=user.id, group=gr.id)
+                u2g.save()
+        else:
+            return HttpResponse('Error', status=404)
+        groups = Group.objects.all()
+        return render(request, 'groupselector.html', {'groups': groups})
+    else:
+        return render(request, 'ModifyGroup.html', dict() if num == 0 else {'rec': Group.objects.get(id=num)})
 
 
 def get_user(username):
@@ -187,7 +245,6 @@ def get_user(username):
 @transaction.atomic
 def index(request, cur_group=0):
     user = get_user(__USERNAME)
-    groups = Group.objects.filter(user2group__user_id=user.id)
-    response = _control(user, cur_group)
-    response.update({'user': user, 'groups': groups, 'current_group_id': cur_group})
+    groups = Group.objects.all()
+    response = {'user': user, 'groups': groups, 'current_group_id': cur_group}
     return render(request, 'main.html', response)

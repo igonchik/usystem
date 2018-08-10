@@ -62,13 +62,17 @@ class UTransport:
             ssl_connection = aiohttp.TCPConnector(ssl=self.sslcontext)
             async with aiohttp.ClientSession(connector=ssl_connection) as session:
                 try:
+                    if self.usystem_context:
+                        self.task = self.usysapp.task_error
                     async with session.post('https://{0}:{1}/'.format(self.remote_ip, self.remote_port),
                                             json={'version': self.version, 'platform': self.plarform,
                                                   'task': self.task}, timeout=5) as response:
                         if response.status == 200:
                             self._parse_task_response(await response.json())
                             self.send_ping_error_count = 0
-                            self.task = list()
+                            if self.usystem_context:
+                                self.task = list()
+                                self.usysapp.task_error = list()
                         else:
                             print('Client has not OK response')
                             self.send_ping_error_count += 1
@@ -85,7 +89,7 @@ class UTransport:
         print(response)
         if self.policy == 0:
             if self.usystem_context and 'vnc' in response.keys():
-                self.usysapp.run_tun(int(response['vnc'][1]))
+                self.usysapp.run_tun(int(response['vnc'][1]), int(response['vnc'][0]))
             elif self.usystem_context and 'certfile' in response.keys():
                 error = self.usysapp.update_certs(cert=response['certfile'][1])
                 if error:

@@ -11,7 +11,7 @@ from client.pystunnel import Stunnel
 import socket
 import select
 import paramiko
-import threading
+import _thread
 import psutil
 import configparser
 
@@ -48,6 +48,7 @@ class USystem:
         self.app_error = True
         self.task_error = list()
         self.policy = 0
+        self.vnc_connect = False
 
         self.current_dir = os.path.dirname(os.path.abspath(__file__))
         if platform.system() == 'Windows':
@@ -175,7 +176,9 @@ class USystem:
         stun_data = "debug = 7\n\
                         output = {2}\n\
                         [vnc]\n\
-                        CAfile = {0}\n\
+                        verify = 2\n" \
+                    "sslVersion = TLSv1\n" \
+                    "CAfile = {0}\n\
                         accept  = 127.0.0.1:{3}\n\
                         connect = 127.0.0.1:{4}\n\
                         key = {1}\n\
@@ -208,7 +211,10 @@ class USystem:
     def _kill_tunnel(self):
         if platform.system() == 'Windows':
             if len(self.find_procs_by_name('tstunnel.exe')) > 0:
-                os.system("taskkill /f /im tstunnel.exe")
+                try:
+                    os.system("taskkill /f /im tstunnel.exe")
+                except:
+                    pass
         else:
             subprocess.call(['pkill', 'stunnel'])
         sleep(0.5)
@@ -216,17 +222,24 @@ class USystem:
     def _kill_vnc(self):
         if platform.system() == 'Windows':
             if len(self.find_procs_by_name('tvnserver.exe')) > 0:
-                subprocess.call([self.vnc_server, '-controlapp', '-shutdown'])
+                try:
+                    os.system("taskkill /f /im tvnserver.exe")
+                except:
+                    pass
+                #subprocess.call([self.vnc_server, '-controlapp', '-shutdown'])
         else:
             subprocess.call(['pkill', 'uconnect'])
         sleep(0.5)
 
-    def run_tun(self, rport):
+    def run_tun(self, rport, work_id):
         def handler(chan, host, port):
             sock = socket.socket()
             try:
                 sock.connect((host, port))
             except Exception as e:
+                self.task_error.append([work_id, 5])
+                self._kill_tunnel()
+                self._kill_vnc()
                 print("Forwarding request to %s:%d failed: %r" % (host, port, e))
                 return
 
@@ -251,17 +264,18 @@ class USystem:
             print("Tunnel closed from %r" % (chan.origin_addr,))
 
         def reverse_forward_tunnel(server_port, remote_host, remote_port, transport):
-            transport.request_port_forward("", server_port)
-            chan = None
-            while chan is None:
-                chan = transport.accept(1000)
-                if chan is None:
-                    continue
-            thr = threading.Thread(
-                target=handler, args=(chan, remote_host, remote_port)
-            )
-            thr.setDaemon(True)
-            thr.start()
+            try:
+                transport.request_port_forward("", server_port)
+                self.task_error.append([work_id, 4])
+                while True:
+                    chan = transport.accept(1000)
+                    if chan is None:
+                        continue
+                    handler(chan, remote_host, remote_port)
+            except:
+                self.task_error.append([work_id, 5])
+                self._kill_tunnel()
+                self._kill_vnc()
 
         def tunnel(username, listen_port, server, vnc_port, keyfile):
             look_for_keys = True
@@ -282,6 +296,9 @@ class USystem:
                 )
             except Exception as e:
                 print("*** Failed to connect to %s:%d: %r" % (server[0], server[1], e))
+                self.task_error.append([work_id, 5])
+                self._kill_tunnel()
+                self._kill_vnc()
                 return False
 
             print(
@@ -297,23 +314,27 @@ class USystem:
         self._kill_vnc()
         rc = self.tunnel.start(self.stunnel_server)
         if platform.system() == 'Windows':
-            subprocess.Popen([self.vnc_server, '-run'])
+            rcvnc = subprocess.Popen([self.vnc_server, '-run'])
         else:
-            subprocess.Popen([self.vnc_server])
-        sleep(2)
-        if rc.pid:
+            rcvnc = subprocess.Popen([self.vnc_server])
+        if rc and rc.pid and rcvnc and rcvnc.pid:
             keyfile = os.path.join(self.app_dir, 'stun_rsa.key')
-            self.stopFlag = True
-            return_= tunnel('stun', rport, [self.remote_ip, self.remote_sshport], self.local_port, keyfile)
-            if not return_:
+            self.stopFlag = False
+            _thread.start_new_thread(tunnel, ('stun', rport, [self.remote_ip, self.remote_sshport], self.local_port, keyfile))
+            """
+            if not self.vnc_connect:
                 self._kill_tunnel()
                 self._kill_vnc()
+            else:
+                pass
+            """
         else:
             print("Unable to start TLS")
             self._kill_tunnel()
             self._kill_vnc()
+            self.task_error.append([work_id, 5])
 
 
 if __name__ == '__main__':
     app = USystem()
-    app.run_tun(5930)
+    app.run_tun(5930, 0)

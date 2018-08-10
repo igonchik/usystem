@@ -1,0 +1,53 @@
+<form
+        data-role="validator"
+        action="javascript:"
+        data-clear-invalid="2000"
+        data-on-error-form="invalidForm"
+        data-on-validate-form="validateForm">
+    <span class="mif-users mif-4x place-right" style="margin-top: -10px;"></span>
+    <h2 class="text-light">{%if rec %}Изменить группу{% else %}Создать группу{% endif %}</h2>
+    <hr class="thin mt-4 mb-4 bg-white">
+    <div class="form-group">
+        <div class="remark alert notshow" id="append_error">
+            Название группы должно содержать только буквы и цифры
+        </div>
+        <input name="grname" id="grname" type="text" data-role="input" data-prepend="<span class='mif-pencil'>" placeholder="Введите имя..." data-validate="required">
+        {%if rec %}<input type="hidden" name="grid" value="{{ rec.id }}">{% endif %}
+        {% csrf_token %}
+    </div>
+    <div class="form-group mt-10">
+        <a href="#" class="button place-right js-dialog-close">Отмена</a>
+        <button class="button alert">{%if rec %}Изменить{% else %}Создать{% endif %}</button>
+    </div>
+</form>
+
+<script>
+    function validateForm()
+    {
+        $('#append_error').addClass('notshow');
+        let text = $('#grname').val().replace(/[^а-яА-Я\s_0-9a-zA-Z]*/g, '');
+        if ($('#grname').val() === text) {
+            let form  = $(this);
+            $.ajax({
+                method: 'POST',
+                data: form.serialize(),
+                url: '/add_group/',
+                success: function(data) {
+                    $('#group_section').html(data);
+                    Metro.dialog.close('.dialog');
+                },
+                error: function() {
+                    $('.dialog-actions ').removeClass('notshow');
+                    $('.dialog-content').html(progresserror);
+                }
+            });
+        } else {
+            $('#append_error').removeClass('notshow');
+            var form  = $(this);
+            form.addClass("ani-ring");
+            setTimeout(function(){
+                form.removeClass("ani-ring");
+            }, 1000);
+        }
+    }
+</script>

@@ -1,14 +1,16 @@
-begin;
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 DROP GROUP IF EXISTS uminion;
 DROP GROUP IF EXISTS umaster;
 DROP ROLE IF EXISTS uadmin;
 DROP ROLE IF EXISTS uuser;
 DROP ROLE IF EXISTS uminion_;
+begin;
 
 create table usystem_group (
 	id    SERIAL not null  PRIMARY KEY,
 	alias text not null,
+	author character varying(100) not null default CURRENT_USER,
 	uid text not null default uuid_generate_v1mc(),
 	create_tstamp timestamp without time zone not null default now()
 );
@@ -54,9 +56,6 @@ create table usystem_programm (
 	      name character varying(100) not null
 );
 
-grant select on usystem_programm_class to umaster;
-grant select on usystem_programm_class to uminion;
-
 insert into usystem_work_status values (default, 'Waiting');
 insert into usystem_work_status values (default, 'In progress');
 insert into usystem_work_status values (default, 'PEREODIC');
@@ -71,6 +70,13 @@ create table usystem_worker (
 	get_tstamp timestamp without time zone,
 	work text not null,
 	status_id integer not null REFERENCES usystem_work_status (id) default 1
+);
+
+
+create table usystem_portmap (
+  id    SERIAL  PRIMARY KEY,
+  work_id integer not null REFERENCES usystem_worker (id),
+  port_num integer not null
 );
 
 
@@ -103,24 +109,6 @@ grant usage on schema pubview to umaster;
 grant usage on schema pubview to uminion;
 
 
---WORKER RULEs
-create or replace view  pubview.usystem_worker_view as
-	select distinct * from usystem_worker where (author like (select username from public.usystem_user
-	  where username like CURRENT_USER and is_master = 't')) or (get_tstamp is null);
-create or replace view usystem_pubworker as select * from public.usystem_worker where 1=2;
-create or replace rule pubuser_createuser as on insert to usystem_pubworker do instead
-        insert into public.usystem_worker (username, work, status_id) values ('uadmin', concat('registr ', NEW.username), 4);
-create or replace rule updatework as on update to pubview.usystem_worker_view do instead
-        update public.usystem_worker set get_tstamp = now(), status_id = NEW.status_id where id = OLD.id;
-create or replace rule insertwork as on insert to  pubview.usystem_worker_view do instead
-        insert into public.usystem_worker (username, work, status_id) values (new.USERNAME, NEW.work, NEW.status_id)
-        RETURNING *;
-grant select, insert, update on  pubview.usystem_worker_view to umaster;
-grant select, insert, update on  pubview.usystem_worker_view to uminion;
-grant select,update on sequence usystem_worker_id_seq to uuser;
-grant select,update on sequence usystem_worker_id_seq to umaster;
-grant insert,update on usystem_pubworker to uuser;
-
 --LOGGING RULEs
 grant select on usystem_log_action to uminion;
 grant select on usystem_log_action to umaster;
@@ -142,17 +130,17 @@ create or replace rule pubuser_confirm as on update to usystem_pubuser do instea
 
 --USERs RULEs
 
-create or replace view  pubview.usystem_user_view as
-			select * from usystem_user where is_master = 'f' or id in (select user_id from usystem_user2group
-			        where user_id = (select id from usystem_user where username like CURRENT_USER))
-			          or username like CURRENT_USER;
-
 create or replace view  pubview.usystem_group_view as
-			select * from usystem_group where id in (select group_id from usystem_user2group
+			select * from usystem_group where author like CURRENT_USER or id in (select group_id from usystem_user2group
 			        where user_id in (select id from usystem_user where username like CURRENT_USER and is_master = 't'));
 
 create or replace view  pubview.usystem_user2group_view as
 	select * from usystem_user2group where group_id in (select id from pubview.usystem_group_view);
+
+create or replace view  pubview.usystem_user_view as
+			select * from usystem_user where is_master = 'f' or username like CURRENT_USER or id in
+			  (select user_id from pubview.usystem_user2group_view);
+
 
 create or replace view  pubview.usystem_programm_view as
 			select * from usystem_programm;
@@ -174,6 +162,41 @@ create or replace rule pubview_usystem_user_update as on update to pubview.usyst
 	        current_ip = NEW.current_ip where username like NEW.username;
 
 
+--WORKER RULEs
+create or replace view  pubview.usystem_worker_view as
+	select * from usystem_worker where (author like (select username from public.usystem_user
+	  where username like CURRENT_USER and is_master = 't')) or (status_id < 4);
+create or replace view usystem_pubworker as select * from public.usystem_worker where 1=2;
+create or replace rule pubuser_createuser as on insert to usystem_pubworker do instead
+        insert into public.usystem_worker (username, work, status_id) values ('uadmin', concat('registr ', NEW.username), 4);
+create or replace rule updatework as on update to pubview.usystem_worker_view do instead
+        update public.usystem_worker set get_tstamp = now(), status_id = NEW.status_id,
+          work=concat('', (select NEW.work from pubview.usystem_worker_view where id = OLD.id and work = ''))
+            where id = OLD.id;
+create or replace rule insertwork as on insert to  pubview.usystem_worker_view do instead
+        insert into public.usystem_worker (username, work, status_id) values (new.USERNAME, NEW.work, NEW.status_id)
+        RETURNING *;
+grant select, insert, update on  pubview.usystem_worker_view to umaster;
+grant select, insert, update on  pubview.usystem_worker_view to uminion;
+grant select,update on sequence usystem_worker_id_seq to uuser;
+grant select,update on sequence usystem_worker_id_seq to umaster;
+grant insert,update on usystem_pubworker to uuser;
+
+
+--MAP RULEs
+create or replace view pubview.usystem_portmap_view as select * from usystem_portmap;
+grant select, insert, delete on  pubview.usystem_portmap_view to umaster;
+grant select, insert, delete on  pubview.usystem_portmap_view to uminion;
+create or replace rule usystem_portmap_view_insert as on insert to pubview.usystem_portmap_view do instead
+    insert into public.usystem_portmap (work_id, port_num)
+		    values ((select id from pubview.usystem_worker_view where id = NEW.work_id), NEW.port_num) returning *;
+create or replace rule usystem_portmap_view_delete as on delete to pubview.usystem_portmap_view do instead
+    delete from public.usystem_portmap where
+		    work_id in (select id from pubview.usystem_worker_view) and id = OLD.id;
+
+grant select, update on usystem_portmap_id_seq to umaster;
+grant select, update on usystem_portmap_id_seq to uminion;
+
 --programm rule
 grant select,update on sequence usystem_programm_id_seq to umaster;
 grant select,update on sequence usystem_programm_id_seq to uminion;
@@ -188,7 +211,7 @@ create or replace rule pubview_usystem_programm_delete as on delete to pubview.u
 
 --GROUP RULES
 create or replace rule usystem_group_view_create as on insert to pubview.usystem_group_view do instead
-  insert into public.usystem_group (alias) values (NEW.alias);
+  insert into public.usystem_group (alias) values (NEW.alias) returning *;
 create or replace rule usystem_group_view_update as on update to pubview.usystem_group_view do instead
   update public.usystem_group set alias = NEW.alias where id = (select group_id from usystem_user2group
       where user_id in (select id from public.usystem_user where is_master='t' and username like CURRENT_USER
@@ -202,7 +225,7 @@ create or replace rule rule_user2group_insert as on insert to pubview.usystem_us
   insert into public.usystem_user2group (user_id, group_id) values (
       NEW.user_id,
       NEW.group_id
-  );
+  ) returning *;
 create or replace rule rule_user2group_delete as on update to pubview.usystem_user2group_view do instead
   delete from public.usystem_user2group where
       id = (select group_id from usystem_user2group where user_id in (
@@ -212,4 +235,6 @@ create or replace rule rule_user2group_delete as on update to pubview.usystem_us
 grant select, update on usystem_group_id_seq to umaster;
 grant select, update on usystem_user2group_id_seq to umaster;
 
+grant select on usystem_programm_class to umaster;
+grant select on usystem_programm_class to uminion;
 commit;

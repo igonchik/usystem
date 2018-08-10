@@ -8,29 +8,20 @@
     <div class="container">
 
         <div class="controls">
-            <button class="button">Add group</button>
-            <button class="button">Remove group</button>
+            <button class="button" onclick="actionsAddGroup()">Add group</button>
             <button class="button">Rename group</button>
             <button class="button">Add user to group</button>
             <button class="button">Remove user from group</button>
-            <button class="button" onclick="actionsDemo()">Actions</button>
         </div>
 
-        {% comment %}
         <div class="d-flex flex-justify-center" id="activity">
             <div data-role="activity" data-type="cycle" data-style="color"></div>
         </div>
-        {% endcomment %}
 
         <div id="minion-table-container">
-            <div class="row flex-justify-between flex-nowrap ml-0 mr-0">
-                <div class="no-wrap" style="width: 75%">
-                    <select id="group_selector">
-                        <option value="0"></option>
-                        {% for rec in groups %}
-                            <option value="{{ rec.id }}">{{ rec.alias }}</option>
-                        {% endfor %}
-                    </select>
+            <div class="row flex-justify-between flex-nowrap ml-0 mr-0 mb-3">
+                <div class="input no-wrap" style="width: 75%" id="group_section">
+                    {% include "groupselector.html" %}
                 </div>
                 <div class="no-wrap " style="width: 25%">
                     <div id="table-actions" style="text-align: right">
@@ -41,39 +32,30 @@
                     </div>
                 </div>
             </div>
-            <table id="minion-table" class="table striped table-border mt-4" data-role="table"
-                   data-show-all-pages="false" data-pagination="true"  data-on-draw="draw" data-on-table-create="tablecreate"
-                   data-cls-rows-count="notshow" data-cls-search="cell-search" data-rows="25">
-                <thead>
-                <tr>
-                    <th class="sortable-column sort-asc">Name</th>
-                    <th class="sortable-column sort-desc">Group</th>
-                    <th class="sortable-column">USYS version</th>
-                    <th class="sortable-column">OS</th>
-                    <th class="sortable-column">Creation date</th>
-                    <th class="sortable-column">State</th>
-                </tr>
-                </thead>
-                <tbody>
-                {% include "minion_table.html" %}
-                </tbody>
-                <tfoot>
-                <tr>
-                    <th>Name</th>
-                    <th>Group</th>
-                    <th>USYS version</th>
-                    <th>OS</th>
-                    <th>Creation date</th>
-                    <th>State</th>
-                </tr>
-                </tfoot>
+
+            <table id="minion-table" class="table striped table-border mt-4"
+                   data-role="table"
+                   data-source="/control_json/"
+                   data-show-all-pages="false"
+                   data-pagination="true"
+                   data-cls-rows-count="notshow"
+                   data-cls-search="cell-search"
+                   data-rows="25"
+                   data-on-draw-row="onDrawRow_"
+                   data-on-data-loaded="onDraw_"
+                   data-on-data-load="onBeforeDraw_"
+                   data-pagination-wrapper=".my-pagination-wrapper"
+                   data-table-info-title="Showed с $1 по $2 из $3"
+            >
             </table>
+            <div class="d-flex flex-justify-center my-pagination-wrapper"></div>
         </div>
     </div>
 
     <script>
         let tableFuncs = {
             archiveFilterIndex: 0,
+            groupFilterIndex: 1,
             addArchiveFilter: function () {
                 let entities_table = $("#minion-table");
                 let table;
@@ -83,7 +65,7 @@
                 }
                 table = entities_table.data("table");
                 this.archiveFilterIndex = table.addFilter(function (row) {
-                    return row[5] === '<span class="fg-green mif-checkmark"></span>';
+                    return parseInt(row[5]) === 1;
                 }, true);
             },
             removeArchiveFilter: function () {
@@ -104,10 +86,9 @@
                     return;
                 }
                 table = entities_table.data("table");
-                this.archiveFilterIndex = table.addFilter(function (row) {
-                    let html = row[1].substring(row[1].indexOf('value=')+7);
-                    html = html.substring(0, html.indexOf('"'));
-                    return parseInt(html) === parseInt($('#group_selector').val());
+                tableFuncs.removeGroupFilter();
+                this.groupFilterIndex = table.addFilter(function (row) {
+                    return parseInt(row[7]) === parseInt($('#group_selector').val());
                 }, true);
             },
             removeGroupFilter: function () {
@@ -118,7 +99,7 @@
                     return;
                 }
                 table = entities_table.data("table");
-                table.removeFilter(this.addGroupFilter, true);
+                table.removeFilter(this.groupFilterIndex, true);
             }
         };
     </script>

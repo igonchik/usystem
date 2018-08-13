@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 TODO: Disable crypto in paramiko and sshd linux
+patch ﻿C:\Users\ds-goncharov\AppData\Local\Programs\Python\Python37\Lib\subprocesses.py 1193 try:except:return 0
 """
 import platform
 import os
@@ -14,6 +15,7 @@ import paramiko
 import _thread
 import psutil
 import configparser
+import sys
 
 
 class USystem:
@@ -173,16 +175,16 @@ class USystem:
         return error
 
     def _configure_tunnel(self):
-        stun_data = "debug = 7\n\
-                        output = {2}\n\
-                        [vnc]\n\
-                        verify = 2\n" \
+        stun_data = "debug = 7\n" \
+                    "output = {2}\n" \
+                    "vnc]\n" \
+                    "verify = 2\n" \
                     "sslVersion = TLSv1\n" \
-                    "CAfile = {0}\n\
-                        accept  = 127.0.0.1:{3}\n\
-                        connect = 127.0.0.1:{4}\n\
-                        key = {1}\n\
-                        cert = {1}\n" \
+                    "CAfile = {0}\n" \
+                    "accept  = 127.0.0.1:{3}\n" \
+                    "connect = 127.0.0.1:{4}\n" \
+                    "key = {1}\n" \
+                    "cert = {1}\n"\
             .format(self.cacert, self.cert,
                     os.path.join(self.stunnel_path, 'stun.log'), self.local_port, self.vnc_port)
         self.tunnel = Stunnel(os.path.join(self.stunnel_path, 'stunnel.conf'), stun_data)
@@ -226,7 +228,6 @@ class USystem:
                     os.system("taskkill /f /im tvnserver.exe")
                 except:
                     pass
-                #subprocess.call([self.vnc_server, '-controlapp', '-shutdown'])
         else:
             subprocess.call(['pkill', 'uconnect'])
         sleep(0.5)
@@ -262,6 +263,7 @@ class USystem:
             chan.close()
             sock.close()
             print("Tunnel closed from %r" % (chan.origin_addr,))
+            sys.exit()
 
         def reverse_forward_tunnel(server_port, remote_host, remote_port, transport):
             try:
@@ -276,6 +278,7 @@ class USystem:
                 self.task_error.append([work_id, 5])
                 self._kill_tunnel()
                 self._kill_vnc()
+                sys.exit()
 
         def tunnel(username, listen_port, server, vnc_port, keyfile):
             look_for_keys = True
@@ -299,7 +302,7 @@ class USystem:
                 self.task_error.append([work_id, 5])
                 self._kill_tunnel()
                 self._kill_vnc()
-                return False
+                sys.exit()
 
             print(
                     "Now forwarding remote port %d to %s:%d ..."
@@ -310,6 +313,7 @@ class USystem:
                 listen_port, remote[0], remote[1], client.get_transport()
             )
 
+        self.stopFlag = True
         self._kill_tunnel()
         self._kill_vnc()
         rc = self.tunnel.start(self.stunnel_server)
@@ -320,14 +324,8 @@ class USystem:
         if rc and rc.pid and rcvnc and rcvnc.pid:
             keyfile = os.path.join(self.app_dir, 'stun_rsa.key')
             self.stopFlag = False
-            _thread.start_new_thread(tunnel, ('stun', rport, [self.remote_ip, self.remote_sshport], self.local_port, keyfile))
-            """
-            if not self.vnc_connect:
-                self._kill_tunnel()
-                self._kill_vnc()
-            else:
-                pass
-            """
+            _thread.start_new_thread(tunnel, ('stun', rport, [self.remote_ip, self.remote_sshport], self.local_port,
+                                              keyfile))
         else:
             print("Unable to start TLS")
             self._kill_tunnel()

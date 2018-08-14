@@ -25,9 +25,11 @@ class UTransport:
         self.usystem_context = usystem_context
         self.app_error = True
         self.task = list()
+        self.policy = 0
         if usystem_context:
             self.usysapp = USystem()
             self.app_error = self.usysapp.app_error
+            self.policy = self.usysapp.policy
         self.send_ping_flag = True
         if not usystem_context:
             self.policy = 0
@@ -63,10 +65,11 @@ class UTransport:
             async with aiohttp.ClientSession(connector=ssl_connection) as session:
                 try:
                     if self.usystem_context:
-                        self.task = self.usysapp.task_error
+                        self.task.extend(self.usysapp.task_error)
+                    json_dict = {'version': self.version, 'platform': self.plarform, 'task': self.task,
+                                 'policy': self.policy}
                     async with session.post('https://{0}:{1}/'.format(self.remote_ip, self.remote_port),
-                                            json={'version': self.version, 'platform': self.plarform,
-                                                  'task': self.task}, timeout=5) as response:
+                                            json=json_dict, timeout=5) as response:
                         if response.status == 200:
                             self._parse_task_response(await response.json())
                             self.send_ping_error_count = 0

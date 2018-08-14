@@ -37,10 +37,14 @@ class User(models.Model):
     home_path = models.TextField(null=False)
     version = models.CharField(max_length=100, null=False, default='0.0')
     current_ip = models.GenericIPAddressField()
+    policy = models.IntegerField(default=0)
 
     def isactive(self):
         delta = datetime.now().astimezone(timezone.utc) - self.lastactivity_tstamp.astimezone(timezone.utc)
-        return (delta.days == -1 and delta.seconds > 86399-30) or (delta.days == 0 and delta.seconds < 30)
+        if (delta.days == -1 and delta.seconds > 86399-30) or (delta.days == 0 and delta.seconds < 30):
+            return self.policy + 1
+        else:
+            return 0
 
     class Meta:
         db_table = '"pubview"."usystem_user_view"'

@@ -9,7 +9,7 @@ pip install configparser
 pip install aiohttp
 pip install cchardet
 pip install aiodns
-pip install openssl
+pip install pyopenssl
 """
 
 import sys
@@ -20,6 +20,43 @@ from client.transport import UTransport
 import asyncio
 from multiprocessing import Pool
 import _thread
+
+
+class LogInGroup(QtWidgets.QDialog):
+    def closeEvent(self, evnt):
+        evnt.ignore()
+        self.hide()
+
+    def enterPin(self):
+        pass
+
+    def __init__(self, parent=None):
+        self.current_dir = os.path.dirname(os.path.abspath(__file__))
+        QtWidgets.QDialog.__init__(self, parent)
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.stnl = None
+        self.p12name = ''
+        self.pin = ''
+        self.setFixedSize(260, 130)
+        self.setWindowTitle(u'Подключение к группе')
+        self.setWindowIcon(QtGui.QIcon(os.path.join(self.current_dir, 'img', 'security-low.png')))
+        self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowMinMaxButtonsHint
+                            & ~QtCore.Qt.WindowContextHelpButtonHint)
+
+        self.title_pin = QtWidgets.QLabel(u'Задайте пароль администратора:', self)
+        self.pin_box = QtWidgets.QLineEdit(self)
+        self.pin_box.setEchoMode(QtWidgets.QLineEdit.Password)
+        self.send_btn = QtWidgets.QPushButton(u'Отправить')
+        self.send_btn.clicked.connect(self.enterPin)
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.addWidget(self.title_pin)
+        layout.addWidget(self.pin_box)
+        layout.addWidget(self.send_btn)
+
+        qr = self.frameGeometry()
+        cp = QtWidgets.QDesktopWidget().availableGeometry().center()
+        qr.moveCenter(cp)
+        self.move(qr.topLeft())
 
 
 class HelpDialog(QtWidgets.QDialog):
@@ -39,7 +76,8 @@ class HelpDialog(QtWidgets.QDialog):
         self.setFixedSize(260, 130)
         self.setWindowTitle(u'Защищённое соединение')
         self.setWindowIcon(QtGui.QIcon('/usr/share/icons/fly-astra/64x64/status/dialog-password.png'))
-        self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowMinMaxButtonsHint)
+        self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowMinMaxButtonsHint
+                            & ~QtCore.Qt.WindowContextHelpButtonHint)
 
         self.title_pin = QtWidgets.QLabel(u'Задайте пароль администратора:', self)
         self.pin_box = QtWidgets.QLineEdit(self)
@@ -80,8 +118,8 @@ class UGuiClient:
     def admin_logindef(self):
         if self.usystem_gid:
             self.send_task('groupout')
-        item, ok = QtWidgets.QInputDialog.getText(self, u"Введите", u"Тест")
-        self.send_task('')
+        self.help_dialog = LogInGroup()
+        self.help_dialog.show()
 
     def admin_logoutdef(self):
         self.send_task('groupout')
@@ -91,12 +129,14 @@ class UGuiClient:
         self.tools.setTitle(self.statustext_high)
         self.tools.setIcon(self.statusicon_high)
         self.trayIcon.setIcon(self.statusicon_high)
+        self.usystem.policy = 0
 
     def touch_mediumdef(self):
         self.security_option = 2
         self.trayIcon.setIcon(self.statusicon_medium)
         self.tools.setTitle(self.statustext_medium)
         self.tools.setIcon(self.statusicon_medium)
+        self.usystem.policy = 1
 
     def touch_disdef(self):
         self.security_option = 3
@@ -104,6 +144,7 @@ class UGuiClient:
         self.tools.setTitle(self.statustext_low)
         self.tools.setIcon(self.statusicon_low)
         self.trayIcon.setIcon(self.statusicon_low)
+        self.usystem.policy = 2
 
     def get_cert_info(self):
         import OpenSSL.crypto as crypto

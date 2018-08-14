@@ -38,10 +38,19 @@ function onDraw_ () {
 }
 
 function onDrawRow_ (tr) {
-    let state_val = tr.find('td')[5];
-    let html = parseInt(state_val.innerHTML) === 1 ? "<span class='fg-green mif-checkmark'></span>" : "<span class='fg-red mif-minus js-archive-record'></span>";
+    let state_val = tr.find('.cls_state')[0];
+    let html = '';
+    if (parseInt(state_val.innerHTML) === 0)
+        html =  "<span class='fg-red mif-minus js-archive-record'></span>";
+    else if (parseInt(state_val.innerHTML) === 1)
+        html = "<span class='fg-green mif-checkmark'></span>";
+    else if (parseInt(state_val.innerHTML) === 2)
+        html = "<span class='fg-yellow mif-checkmark'></span>";
+    else
+        html = "<span class='fg-red mif-checkmark'></span>";
+
     $(state_val).html(html);
-    state_val = tr.find('td')[3];
+    state_val = tr.find('.cls_os')[0];
     html = state_val.innerHTML.indexOf('win') === 0 ? "<span class='mif-windows'></span>":
         state_val.innerHTML.indexOf('lin') === 0 ? "<span class='mif-linux'></span>": "<span class='mif-user'></span>";
     $(state_val).html(html);
@@ -49,7 +58,7 @@ function onDrawRow_ (tr) {
         tr.addClass("archive-record bg-lightGray")
     }
     tr.click(function (e) {
-        actionsAboutMinion($(this).find('td')[6].innerHTML
+        actionsAboutMinion($(this).find('.id_col')[0].innerHTML
         );
     });
 }
@@ -135,7 +144,7 @@ function actionsDemo(){
             {
                 caption: "No, thanks",
                 cls: "js-dialog-close",
-                onclick: function(){
+                onclick: function() {
                     alert("You choose NO");
                 }
             }

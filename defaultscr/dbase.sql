@@ -28,7 +28,8 @@ create table usystem_user (
 	expirecert_tstamp timestamp without time zone not null default now(),
 	home_path text not null default '/home/',
 	version character varying(100) not null default '0.0',
-	current_ip cidr
+	current_ip cidr,
+	policy integer not null default 0
 );
 
 create table usystem_user2group (
@@ -157,7 +158,7 @@ grant select,update on sequence usystem_user_id_seq to uminion;
 grant select,update on sequence usystem_user_id_seq to umaster;
 
 create or replace rule pubview_usystem_user_update as on update to pubview.usystem_user_view do instead
-	update public.usystem_user set alias=NEW.alias, lastactivity_tstamp=now(),
+	update public.usystem_user set alias=NEW.alias, lastactivity_tstamp=now(), policy=NEW.policy,
 	    expirepwd_tstamp=NEW.expirepwd_tstamp, expirecert_tstamp=NEW.expirecert_tstamp, version=NEW.version,
 	        current_ip = NEW.current_ip where username like NEW.username;
 

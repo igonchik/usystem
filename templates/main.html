@@ -65,7 +65,7 @@
                 }
                 table = entities_table.data("table");
                 this.archiveFilterIndex = table.addFilter(function (row) {
-                    return parseInt(row[5]) === 1;
+                    return parseInt(row[6]) > 0;
                 }, true);
             },
             removeArchiveFilter: function () {
@@ -88,7 +88,7 @@
                 table = entities_table.data("table");
                 tableFuncs.removeGroupFilter();
                 this.groupFilterIndex = table.addFilter(function (row) {
-                    return parseInt(row[7]) === parseInt($('#group_selector').val());
+                    return parseInt(row[8]) === parseInt($('#group_selector').val());
                 }, true);
             },
             removeGroupFilter: function () {

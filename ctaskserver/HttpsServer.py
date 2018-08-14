@@ -58,6 +58,7 @@ user_view = sa.Table('usystem_user_view', metadata,
                      sa.Column('alias', sa.Text),
                      sa.Column('username', sa.String(100), nullable=False),
                      sa.Column('version', sa.String(100)),
+                     sa.Column('policy', sa.Integer),
                      sa.Column('is_master', sa.Boolean),
                      sa.Column('email_confirmed', sa.Boolean),
                      schema='pubview'
@@ -181,8 +182,12 @@ class USystemServer:
                             print("Append new program {0}...".format(request['remote_user']))
 
             # update user status
-            query = sa.update(user_view).where(user_view.c.username == request['remote_user']). \
-                values(version=data['version'], current_ip=request.remote)
+            if 'policy' in data and 'version' in data:
+                query = sa.update(user_view).where(user_view.c.username == request['remote_user']). \
+                    values(version=data['version'], current_ip=request.remote, policy=int(data['policy']))
+            else:
+                query = sa.update(user_view).where(user_view.c.username == request['remote_user']). \
+                    values(current_ip=request.remote)
             await connection.execute(query)
 
             # update works status

@@ -136,6 +136,7 @@ def connectvnc(request, uid):
                                         '--ssl-version', 'tlsv1_2',
                                         '--cert', certpath,
                                         '--ssl-only',
+                                        '--timeout', '60',
                                         '--cafile', cafile,
                                         '--auth-plugin', 'ClientCertCNAuth',
                                         '--auth-source', ' '.join(rec for rec in users)
@@ -145,8 +146,6 @@ def connectvnc(request, uid):
             host = request.META['HTTP_HOST']
             if ':' in request.META['HTTP_HOST']:
                 host = request.META['HTTP_HOST'].split(':')[0]
-            host = 'usystem.com'
-            time.sleep(2)
             return HttpResponse('https://{0}:{1}'.format(host, port[2]))
 
     new_work.status_id = 5
@@ -186,12 +185,14 @@ def minion_json(request):
     h.append({'name': 'name', 'title': 'Name', 'sortable': True, 'sortDir': 'asc', 'format': 'string'})
     h.append({'name': 'group', 'title': 'Group', 'sortable': True, 'format': 'string'})
     h.append({'name': 'version', 'title': 'USYS version', 'sortable': True, 'format': 'string'})
-    h.append({'name': 'os', 'title': 'OS', 'sortable': True, 'format': 'string'})
+    h.append({'name': 'os', 'title': 'OS', 'sortable': True, 'format': 'string', 'clsColumn': 'cls_os'})
     h.append({'name': 'creation', 'title': 'Creation date', 'sortable': True, 'format': 'date',
               'formatMask': 'mm.dd.yyyy'})
-    h.append({'name': 'state', 'title': 'State', 'sortable': True})
-    h.append({'name': 'id', 'title': 'ID', 'clsColumn': 'notshow'})
-    h.append({'name': 'group_id', 'title': 'GROUP_ID', 'clsColumn': 'notshow'})
+    h.append({'name': 'update', 'title': 'Last update', 'sortable': True, 'format': 'date',
+              'formatMask': 'mm.dd.yyyy HH:MM'})
+    h.append({'name': 'state', 'title': 'State', 'sortable': True, 'clsColumn': 'cls_state'})
+    h.append({'name': 'id', 'title': 'ID', 'clsColumn': 'notshow id_col'})
+    h.append({'name': 'group_id', 'title': 'GROUP_ID', 'clsColumn': 'notshow groupid_col'})
     f = list()
     for rec in h:
         f.append({'name': rec['name'], 'title': rec['title']})
@@ -207,7 +208,8 @@ def minion_json(request):
                 rec.programm_set.filter(classname_id=1)[0].name if rec.programm_set.filter(classname_id=1).exists()
                 else '',
                 rec.register_tstamp.strftime("%d.%m.%Y"),
-                0 if not rec.isactive() else 1,
+                rec.lastactivity_tstamp.strftime("%d.%m.%Y %H:%M"),
+                rec.isactive(),
                 rec.id,
                 rec.user2group_set.all()[0].group.id
             ])

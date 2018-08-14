@@ -1,9 +1,9 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-"""
-TODO: Disable crypto in paramiko and sshd linux
-patch ﻿C:\Users\ds-goncharov\AppData\Local\Programs\Python\Python37\Lib\subprocesses.py 1193 try:except:return 0
-"""
+
+# TODO: Disable crypto in paramiko and sshd linux
+# patch ﻿C:\Users\ds-goncharov\AppData\Local\Programs\Python\Python37\Lib\subprocesses.py 1193 try:except:return 0
+
 import platform
 import os
 from time import sleep

@@ -101,7 +101,6 @@ def connectvnc(request, uid):
         time.sleep(1)
         time_index += 1
         if Worker.objects.get(id=new_work.id).status_id == 4:
-            # TODO stun run on accept port[1] connect port[0]
             group_list = list(minion.user2group_set.all().values_list('group_id', flat=True))
             user_list = list(user.user2group_set.all().filter(group_id__in=group_list).values_list('user_id',
                                                                                                    flat=True))
@@ -256,12 +255,30 @@ def about(request, num=0):
     minion = User.objects.get(id=num)
     groups = Group.objects.all().order_by('id')
     u2g = User2Group.objects.filter(user_id=minion.id)
+
+    # VNC ACTIVE CONNECTION
+    port_vnc = False
+    author_vnc = False
+    vncconnection = Worker.objects.filter(username=minion.username).filter(status_id=4).\
+        filter(work__startswith='VNCCONNECT').order_by('id')
+    if vncconnection.exists():
+        vncconnection = vncconnection.last()
+        author_vnc = User.objects.get(username=vncconnection.author)
+        try:
+            port_vnc = PortMap.objects.filter(work_id=vncconnection.id).order_by('id').last().port_num
+            host = request.META['HTTP_HOST']
+            if ':' in request.META['HTTP_HOST']:
+                host = request.META['HTTP_HOST'].split(':')[0]
+            port_vnc = 'https://{0}:{1}'.format(host, port_vnc)
+        except:
+            pass
     if request.method == 'POST':
         post = safe_query(request.POST)
         if 'grname' in post and post['grname'] != '':
             minion.alias = post['grname']
             minion.save()
-    return render(request, 'AboutUser.html', {'rec': minion, 'groups': groups, 'u2g': u2g})
+    return render(request, 'AboutUser.html', {'rec': minion, 'groups': groups, 'u2g': u2g, 'port_vnc': port_vnc,
+                                              'author_vnc': author_vnc})
 
 
 def get_user(username):

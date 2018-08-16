@@ -19,6 +19,7 @@ class Group(models.Model):
     uid = models.TextField(null=False)
     author = models.CharField(max_length=100, null=False)
     create_tstamp = models.DateTimeField(default=now)
+    parent_id = models.IntegerField(null=True)
 
     class Meta:
         db_table = '"pubview"."usystem_group_view"'
@@ -45,6 +46,11 @@ class User(models.Model):
             return self.policy + 1
         else:
             return 0
+
+    def uname(self):
+        if self.alias:
+            return self.alias
+        return self.username
 
     class Meta:
         db_table = '"pubview"."usystem_user_view"'

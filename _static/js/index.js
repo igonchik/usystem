@@ -98,6 +98,7 @@ function actionsVNCMinion(elem) {
     Metro.dialog.create({
         title: "Идет подключение...",
         overlay: true,
+        clsDialog: 'vnc_minion',
         content: function() {
             if (active_VNC && parseInt(active_VNC) > 0)
                 elem = active_VNC + '/';
@@ -111,7 +112,7 @@ function actionsVNCMinion(elem) {
                     win.focus();
                 },
                 error: function() {
-                    $('.dialog-content').html(progresserror_VNC);
+                    $('.vnc_minion .dialog-content').html(progresserror_VNC);
                 }
             });
             return progress

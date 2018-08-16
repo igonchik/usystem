@@ -3,24 +3,55 @@
 <h2 class="text-light">{% if rec.alias %}{{ rec.alias }}{% else %}{{ rec.username }}{% endif %}</h2>
 <hr class="thin mt-4 mb-4 bg-white">
 <div class="form-group">
-    <ul data-role="tabs" data-tabs-position="vertical" class="tabs-list" data-role-tabs="true">
+
+    <ul data-role="tabs" data-tabs-position="vertical" class="vertical tabs-expand-fs" data-role-tabs="true" style="max-width: 220px">
+        <li><a href="#_target_0">Общая информация</a></li>
         <li><a href="#_target_1">Переименовать</a></li>
         <li><a href="#_target_2">Перевыпустить сертификат</a></li>
         <li><a href="#_target_3">Переместить в группу</a></li>
-        <li><a href="#_target_3">Выгнать пользователя</a></li>
+        <li><a href="#_target_4">Выгнать пользователя</a></li>
+        <li><a href="#_target_5">Последние изменения</a></li>
     </ul>
 
-    <div class="border bd-default no-border-top p-2">
+    <div class="border bd-default no-border-left p-2">
+        <div id="_target_0">
+            <p style="text-align: right">
+                {% if port_vnc %}
+                <span data-role="hint" data-hint-text="VNC connected from <b>{{ author_vnc.uname }}</b>" class="mif-settings-ethernet icon fg-green mif-3x"
+                      style="cursor: pointer" onclick="vnctab('{{ port_vnc }}');"></span>
+                <span data-role="hint" data-hint-text="Close VNC connection <b>{{ author_vnc.uname }}</b>" class="mif-cross icon fg-red mif-2x"
+                      style="cursor: pointer" onclick="alert(2)"></span> <br/>
+                {% else %}
+                <span data-role="hint" data-hint-text="Create VNC connection" class="mif-settings-ethernet icon fg-red mif-3x"
+                      style="cursor: pointer" onclick="actionsVNCMinion({{ rec.id }});"></span>
+                {% endif %}
+
+                {% if port_ftp %}
+                <span data-role="hint" data-hint-text="File transfer connected from <b>{{ author_vnc.uname }}</b>" class="mif-upload icon fg-green mif-3x"
+                      style="cursor: pointer" onclick="alert(1)"></span>
+                <span data-role="hint" data-hint-text="Close file transfer connection <b>{{ author_vnc.uname }}</b>" class="mif-cross icon fg-red mif-2x"
+                      style="cursor: pointer" onclick="alert(2)"></span> <br/>
+                {% else %}
+                <span data-role="hint" data-hint-text="Create File transfer connection" class="mif-upload icon fg-red mif-3x"
+                      style="cursor: pointer" onclick="alert(1)"></span>
+                {% endif %}
+            </p>
+            <p>Last IP: <mark>{{ rec.current_ip }}</mark></p>
+            <p>Date creation: <mark>{{ rec.register_tstamp|date:"d.m.Y H:i" }}</mark></p>
+            <p>Last Activity: <mark>{{ rec.lastactivity_tstamp|date:"d.m.Y H:i" }}</mark></p>
+            <p>Soft version: <mark>{{ rec.version }}</mark></p>
+        </div>
         <div id="_target_1" style="min-height: 90px">
             <form
                     data-role="validator"
                     action="javascript:"
                     data-clear-invalid="2000"
                     data-on-error-form="invalidForm"
-                    data-on-validate-form="validateForm">
+                    data-on-validate-form="validateForm" style="padding-left: 15px">
                 <div class="remark alert notshow" id="append_error">
                     Имя пользователя должно содержать только буквы и цифры
                 </div>
+                {% csrf_token %}
                 <input {% if rec.alias %}value="{{ rec.alias }}"{% else %}value="{{ rec.username }}"{% endif %} name="grname" id="grname" type="text" data-role="input" data-prepend="<span class='mif-pencil'>" placeholder="Введите имя..." data-validate="required">
                 <button class="button place-right alert" style="margin-top: 20px">Применить</button>
             </form>
@@ -31,14 +62,34 @@
         <div id="_target_3">
             Cream soup is just not the same without basil
         </div>
+        <div id="_target_4">
+            Cream soup is just not the same without basil
+        </div>
+        <div id="_target_5">
+            Cream soup is just not the same without basil
+        </div>
     </div>
-    {% csrf_token %}
 </div>
 <div class="form-group mt-10">
     <a href="#" class="button place-right js-dialog-close">Закрыть</a>
 </div>
 
+<style type="text/css">
+    .bd-default {
+        position: absolute;
+        top: 0;
+        left: 220px;
+        width: 630px;
+        min-height: 100%;
+    }
+</style>
+
 <script>
+    function vnctab(url) {
+        var win = window.open(url, '_blank');
+        win.focus();
+    }
+
     function validateForm()
     {
         $('#append_error').addClass('notshow');
@@ -67,4 +118,6 @@
             }, 1000);
         }
     }
+
+    $('.tabs').removeClass('tabs-list').addClass('vertical').addClass('tabs-expand-fs');
 </script>

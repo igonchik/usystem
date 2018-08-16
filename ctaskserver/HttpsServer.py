@@ -192,7 +192,6 @@ class USystemServer:
 
             # update works status
             if 'task' in data.keys() and len(data['task']) > 0:
-                print(data['task'])
                 for rec in data['task']:
                     query = sa.update(work_view).where(work_view.c.id == int(rec[0])).\
                         where(work_view.c.status_id < 4). \

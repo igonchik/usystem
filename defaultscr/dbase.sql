@@ -12,6 +12,7 @@ create table usystem_group (
 	alias text not null,
 	author character varying(100) not null default CURRENT_USER,
 	uid text not null default uuid_generate_v1mc(),
+	parent_id integer,
 	create_tstamp timestamp without time zone not null default now()
 );
 
@@ -62,6 +63,7 @@ insert into usystem_work_status values (default, 'In progress');
 insert into usystem_work_status values (default, 'PEREODIC');
 insert into usystem_work_status values (default, 'Finished');
 insert into usystem_work_status values (default, 'FinishedERROR');
+insert into usystem_work_status values (default, 'Closed');
 
 create table usystem_worker (
 	id    SERIAL  PRIMARY KEY,
@@ -212,7 +214,8 @@ create or replace rule pubview_usystem_programm_delete as on delete to pubview.u
 
 --GROUP RULES
 create or replace rule usystem_group_view_create as on insert to pubview.usystem_group_view do instead
-  insert into public.usystem_group (alias) values (NEW.alias) returning *;
+  insert into public.usystem_group (alias, parent_id) values (NEW.alias,
+                  (select id from pubview.usystem_group_view where id = NEW.id)) returning *;
 create or replace rule usystem_group_view_update as on update to pubview.usystem_group_view do instead
   update public.usystem_group set alias = NEW.alias where id = (select group_id from usystem_user2group
       where user_id in (select id from public.usystem_user where is_master='t' and username like CURRENT_USER

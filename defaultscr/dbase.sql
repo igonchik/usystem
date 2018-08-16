@@ -217,10 +217,11 @@ create or replace rule usystem_group_view_update as on update to pubview.usystem
   update public.usystem_group set alias = NEW.alias where id = (select group_id from usystem_user2group
       where user_id in (select id from public.usystem_user where is_master='t' and username like CURRENT_USER
   ) and group_id = OLD.id);
+
 create or replace rule usystem_group_view_delete as on delete to pubview.usystem_group_view do instead
-  delete from public.usystem_group where id = (select group_id from usystem_user2group where user_id in (
+  delete from public.usystem_group where (author like CURRENT_USER or id in (select group_id from usystem_user2group where user_id in (
     select id from public.usystem_user where is_master='t' and username like CURRENT_USER
-  ) and group_id = OLD.id);
+  ))) and id = OLD.id and alias != 'Ожидают авторизации';
 
 create or replace rule rule_user2group_insert as on insert to pubview.usystem_user2group_view do instead
   insert into public.usystem_user2group (user_id, group_id) values (

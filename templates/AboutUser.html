@@ -1,0 +1,70 @@
+
+<span class="mif-users mif-4x place-right" style="margin-top: -10px;"></span>
+<h2 class="text-light">{% if rec.alias %}{{ rec.alias }}{% else %}{{ rec.username }}{% endif %}</h2>
+<hr class="thin mt-4 mb-4 bg-white">
+<div class="form-group">
+    <ul data-role="tabs" data-tabs-position="vertical" class="tabs-list" data-role-tabs="true">
+        <li><a href="#_target_1">Переименовать</a></li>
+        <li><a href="#_target_2">Перевыпустить сертификат</a></li>
+        <li><a href="#_target_3">Переместить в группу</a></li>
+        <li><a href="#_target_3">Выгнать пользователя</a></li>
+    </ul>
+
+    <div class="border bd-default no-border-top p-2">
+        <div id="_target_1" style="min-height: 90px">
+            <form
+                    data-role="validator"
+                    action="javascript:"
+                    data-clear-invalid="2000"
+                    data-on-error-form="invalidForm"
+                    data-on-validate-form="validateForm">
+                <div class="remark alert notshow" id="append_error">
+                    Имя пользователя должно содержать только буквы и цифры
+                </div>
+                <input {% if rec.alias %}value="{{ rec.alias }}"{% else %}value="{{ rec.username }}"{% endif %} name="grname" id="grname" type="text" data-role="input" data-prepend="<span class='mif-pencil'>" placeholder="Введите имя..." data-validate="required">
+                <button class="button place-right alert" style="margin-top: 20px">Применить</button>
+            </form>
+        </div>
+        <div id="_target_2">
+            The shield is a post-apocalyptic nanomachine.
+        </div>
+        <div id="_target_3">
+            Cream soup is just not the same without basil
+        </div>
+    </div>
+    {% csrf_token %}
+</div>
+<div class="form-group mt-10">
+    <a href="#" class="button place-right js-dialog-close">Закрыть</a>
+</div>
+
+<script>
+    function validateForm()
+    {
+        $('#append_error').addClass('notshow');
+        let text = $('#grname').val().replace(/[^а-яА-Я\s_0-9a-zA-Z]*/g, '');
+        if ($('#grname').val() === text && text !== 'Ожидают авторизации') {
+            let form  = $(this);
+            $.ajax({
+                method: 'POST',
+                data: form.serialize(),
+                url: '/about/' + {{ rec.id }} + '/',
+                success: function(data) {
+                    update_minion_table();
+                    Metro.dialog.close('.dialog');
+                },
+                error: function() {
+                    $('.dialog-actions ').removeClass('notshow');
+                    $('.dialog-content').html(progresserror);
+                }
+            });
+        } else {
+            $('#append_error').removeClass('notshow');
+            var form  = $(this);
+            form.addClass("ani-ring");
+            setTimeout(function(){
+                form.removeClass("ani-ring");
+            }, 1000);
+        }
+    }
+</script>

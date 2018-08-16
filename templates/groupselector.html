@@ -1,6 +1,31 @@
 <select id="group_selector" data-role="select" data-prepend="<span>Группа</span>">
     <option value="0">Все группы</option>
     {% for rec in groups %}
-        <option value="{{ rec.id }}">{{ rec.alias }}</option>
+        <option value="{{ rec.id }}" {% if rec.id == cur_gr %}selected{% endif %}>{{ rec.alias }}</option>
     {% endfor %}
 </select>
+<script>
+    $('#group_selector').change(function () {
+        let val = $(this).val();
+        if ($( "#group_selector option:selected" ).text() === 'Ожидают авторизации')
+        {
+            $('#renamegr').css('display', 'none');
+            $('#deletegr').css('display', 'none');
+        }
+
+        if (val !== '' && val !== '0') {
+            tableFuncs.addGroupFilter();
+            if ($( "#group_selector option:selected" ).text() !== 'Ожидают авторизации')
+            {
+                $('#renamegr').css('display', 'inline');
+                $('#deletegr').css('display', 'inline');
+            }
+        }
+        else {
+            tableFuncs.removeGroupFilter();
+            $('#renamegr').css('display', 'none');
+            $('#deletegr').css('display', 'none');
+        }
+    });
+    update_minion_table();
+</script>

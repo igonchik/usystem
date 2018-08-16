@@ -4,13 +4,9 @@ let progresserror_VNC = '<div class="d-flex flex-justify-center"><p>Ой:( По�
 let active_VNC = 0;
 
 $(function () {
-    $('#group_selector').change(function () {
-        let val = $(this).val();
-        if (val !== '' && val !== '0')
-            tableFuncs.addGroupFilter();
-        else
-            tableFuncs.removeGroupFilter();
-    });
+    $('#renamegr').css('display', 'none');
+    $('#deletegr').css('display', 'none');
+
     if (!$("#filter").is(':checked'))
         tableFuncs.addArchiveFilter();
     setInterval(update_minion_table, 30000);
@@ -66,6 +62,40 @@ function onDrawRow_ (tr) {
 function actionsAboutMinion(elem) {
     active_VNC = elem;
     Metro.dialog.create({
+        overlay: true,
+        clsAction: 'notshow',
+        clsDialog: 'showTop',
+        width: 900,
+        overlayClickClose: 'true',
+        content: function() {
+            if (active_VNC && parseInt(active_VNC) > 0)
+                elem = active_VNC + '/';
+            else
+                return progresserror;
+            $.ajax({
+                url: '/about/'+elem,
+                success: function(data) {
+                    $('.dialog-content').html(data);
+                },
+                error: function() {
+                    $('.dialog-content').html(progresserror);
+                }
+            });
+            return progress
+        },
+        actions: [
+            {
+                caption: "Закрыть",
+                cls: "js-dialog-close alert",
+            }
+        ]
+    });
+}
+
+
+function actionsVNCMinion(elem) {
+    active_VNC = elem;
+    Metro.dialog.create({
         title: "Идет подключение...",
         overlay: true,
         content: function() {
@@ -99,7 +129,35 @@ function actionsAboutMinion(elem) {
 function actionsAddGroup() {
     Metro.dialog.create({
         content: function() {
-            group_id = $('#group_section').val();
+            $.ajax({
+                url: '/add_group/',
+                success: function(data) {
+                    $('.dialog-content').html(data);
+                },
+                error: function() {
+                    $('.dialog-content').html(progresserror);
+                }
+            });
+            return progress
+        },
+        overlay: true,
+        clsAction: 'notshow',
+        clsDialog: 'showTop',
+        overlayClickClose: 'true',
+        actions: [
+            {
+                caption: "Закрыть",
+                cls: "js-dialog-close alert"
+            }
+        ]
+    });
+}
+
+
+function actionsRenameGroup() {
+    Metro.dialog.create({
+        content: function() {
+            group_id = $('#group_selector').val();
             if (group_id && parseInt(group_id) > 0)
                 group_id = group_id + '/';
             else
@@ -120,11 +178,45 @@ function actionsAddGroup() {
         clsDialog: 'showTop',
         overlayClickClose: 'true',
         actions: [
-                {
-                    caption: "Закрыть",
-                    cls: "js-dialog-close alert"
-                }
-            ]
+            {
+                caption: "Закрыть",
+                cls: "js-dialog-close alert"
+            }
+        ]
+    });
+}
+
+
+function actionsDeleteGroup() {
+    group_id = $('#group_selector').val();
+    if (group_id && parseInt(group_id) > 0)
+        group_id = group_id + '/';
+    else
+        group_id = '';
+    $.ajax({
+        url: '/delete_group/'+group_id,
+        success: function(data) {
+            if (data === 'exists') {
+                Metro.dialog.create({
+                    title: 'Ошибка!',
+                    content: '<div>В данной группе есть активные пользователи или у Вас недостаточно прав для ее редактирования ;(</div>',
+                    overlay: true,
+                    clsDialog: 'showTop',
+                    overlayClickClose: 'true',
+                    actions: [
+                        {
+                            caption: "Закрыть",
+                            cls: "js-dialog-close alert"
+                        }
+                    ]
+                });
+            } else {
+                $('#group_selector').val('0');
+            }
+        },
+        error: function() {
+            $('.dialog-content').html(progresserror);
+        }
     });
 }
 

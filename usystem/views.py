@@ -218,26 +218,50 @@ def minion_json(request):
 
 
 @transaction.atomic
+def delete_group(request, num):
+    user = get_user(__USERNAME)
+    gr = Group.objects.get(id=int(num))
+    exists = User2Group.objects.filter(group=gr, user__is_master=False).exists()
+    if exists or gr.author != user.username or gr.alias == 'Ожидают авторизации':
+        return HttpResponse('exists')
+    User2Group.objects.filter(group=gr).delete()
+    gr.delete()
+    return HttpResponse('OK')
+
+
+@transaction.atomic
 def add_group(request, num=0):
     user = get_user(__USERNAME)
     if request.method == 'POST':
         post = safe_query(request.POST)
-        if 'grname' in post and post['grname'] != '':
+        groups = Group.objects.all().order_by('id')
+        if 'grname' in post and post['grname'] != '' and post['grname'] != 'Ожидают авторизации':
             if 'grid' in post and post['grid'] != '':
                 gr = Group.objects.get(id=int(post['grid']))
             else:
                 gr = Group()
             gr.alias = post['grname']
             gr.save()
-            if 'grid' in post and post['grid'] != '':
-                u2g = User2Group(user_id=user.id, group=gr.id)
+            if not ('grid' in post and post['grid'] != ''):
+                u2g = User2Group(user_id=user.id, group=gr)
                 u2g.save()
+            return render(request, 'groupselector.html', {'groups': groups, 'cur_gr': gr.id})
         else:
             return HttpResponse('Error', status=404)
-        groups = Group.objects.all()
-        return render(request, 'groupselector.html', {'groups': groups})
     else:
         return render(request, 'ModifyGroup.html', dict() if num == 0 else {'rec': Group.objects.get(id=num)})
+
+
+def about(request, num=0):
+    minion = User.objects.get(id=num)
+    groups = Group.objects.all().order_by('id')
+    u2g = User2Group.objects.filter(user_id=minion.id)
+    if request.method == 'POST':
+        post = safe_query(request.POST)
+        if 'grname' in post and post['grname'] != '':
+            minion.alias = post['grname']
+            minion.save()
+    return render(request, 'AboutUser.html', {'rec': minion, 'groups': groups, 'u2g': u2g})
 
 
 def get_user(username):
@@ -247,6 +271,6 @@ def get_user(username):
 @transaction.atomic
 def index(request, cur_group=0):
     user = get_user(__USERNAME)
-    groups = Group.objects.all()
+    groups = Group.objects.all().order_by('id')
     response = {'user': user, 'groups': groups, 'current_group_id': cur_group}
     return render(request, 'main.html', response)

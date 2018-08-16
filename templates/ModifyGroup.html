@@ -11,7 +11,7 @@
         <div class="remark alert notshow" id="append_error">
             Название группы должно содержать только буквы и цифры
         </div>
-        <input name="grname" id="grname" type="text" data-role="input" data-prepend="<span class='mif-pencil'>" placeholder="Введите имя..." data-validate="required">
+        <input {% if rec %}value="{{ rec.alias }}"{% endif %} name="grname" id="grname" type="text" data-role="input" data-prepend="<span class='mif-pencil'>" placeholder="Введите имя..." data-validate="required">
         {%if rec %}<input type="hidden" name="grid" value="{{ rec.id }}">{% endif %}
         {% csrf_token %}
     </div>
@@ -26,7 +26,7 @@
     {
         $('#append_error').addClass('notshow');
         let text = $('#grname').val().replace(/[^а-яА-Я\s_0-9a-zA-Z]*/g, '');
-        if ($('#grname').val() === text) {
+        if ($('#grname').val() === text && text !== 'Ожидают авторизации') {
             let form  = $(this);
             $.ajax({
                 method: 'POST',

@@ -168,14 +168,19 @@ create or replace rule pubview_usystem_user_update as on update to pubview.usyst
 --WORKER RULEs
 create or replace view  pubview.usystem_worker_view as
 	select * from usystem_worker where (author like (select username from public.usystem_user
-	  where username like CURRENT_USER and is_master = 't')) or (status_id < 4);
+	  where username like CURRENT_USER and is_master = 't')) or (status_id <= 4);
 create or replace view usystem_pubworker as select * from public.usystem_worker where 1=2;
 create or replace rule pubuser_createuser as on insert to usystem_pubworker do instead
         insert into public.usystem_worker (username, work, status_id) values ('uadmin', concat('registr ', NEW.username), 4);
 create or replace rule updatework as on update to pubview.usystem_worker_view do instead
         update public.usystem_worker set get_tstamp = now(), status_id = NEW.status_id,
-          work=concat('', (select NEW.work from pubview.usystem_worker_view where id = OLD.id and work = ''))
+          work=(
+                  case (select count(*) from pubview.usystem_worker_view where id = OLD.id and work = '') when 1 then NEW.work
+                  else OLD.work
+                  end
+               )
             where id = OLD.id;
+
 create or replace rule insertwork as on insert to  pubview.usystem_worker_view do instead
         insert into public.usystem_worker (username, work, status_id) values (new.USERNAME, NEW.work, NEW.status_id)
         RETURNING *;

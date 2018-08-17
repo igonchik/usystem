@@ -194,8 +194,12 @@ class USystemServer:
             if 'task' in data.keys() and len(data['task']) > 0:
                 for rec in data['task']:
                     query = sa.update(work_view).where(work_view.c.id == int(rec[0])).\
-                        where(work_view.c.status_id < 4). \
+                        where(work_view.c.status_id <= 4). \
                         where(work_view.c.username == request['remote_user']).values(status_id=int(rec[1]))
+                    # delete buinding ports
+                    if int(rec[1]) > 4:
+                        query_del = sa.delete(portmap).where(portmap.c.work_id == int(rec[0]))
+                        await connection.execute(query_del)
                     await connection.execute(query)
 
             # find and send new works to minion

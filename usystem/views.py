@@ -56,37 +56,6 @@ def get_open_port(worker, count=1):
     return ports
 
 
-def start_stunnel(remote_ip, remote_port):
-    from usystem.pystunnel import Stunnel
-    if not os.path.isdir("/tmp/usystem/{0}/".format(getpass.getuser())):
-        os.mkdir("/tmp/usystem/{0}/".format(getpass.getuser()))
-    if not os.path.isdir("/var/log/usystem/{0}/".format(getpass.getuser())):
-        os.mkdir("/var/log/usystem/{0}/".format(getpass.getuser()))
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.bind(("", 0))
-    s.listen(1)
-    local_port = s.getsockname()[1]
-    data = 'output = /var/log/usystem/{0}/stunnel1.log\n\
-    [vnc]\n\
-    verify = 2\n\
-    sslVersion = TLSv1\n\
-    accept  = 127.0.0.1:{1}\n\
-    connect = {2}:{3}\n\
-    cert = /var/{0}/p12/web.pem\n\
-    key = /var/{0}/p12/web.pem\n\
-    CAfile = /var/{0}/cacert.pem'.format(getpass.getuser(), local_port, remote_ip, remote_port)
-    stunnel = Stunnel("/tmp/usystem/{0}/stunnel.conf".format(getpass.getuser()), data)
-    s.close()
-    rc = stunnel.start()
-    if rc.pid:
-        print("stunnel is running with pid", rc.pid)
-    else:
-        raise RuntimeError("Stunnel is not running")
-    time.sleep(1)
-    os.remove("/tmp/usystem/{0}/stunnel.conf".format(getpass.getuser()))
-    return local_port
-
-
 def connectvnc(request, uid):
     import pwd
     user = get_user(__USERNAME)
@@ -128,14 +97,14 @@ def connectvnc(request, uid):
             with open(conf_path, 'w') as the_file:
                 the_file.write(stunnel_conf)
             stun = subprocess.Popen(['stunnel', conf_path], close_fds=True)
-            websock = subprocess.Popen(['python3', os.path.join(websockify_dir, 'websockify', 'run'),
+            websock = subprocess.Popen(['python3.5', os.path.join(websockify_dir, 'websockify', 'run'),
                                         '--web', os.path.join(websockify_dir, 'templates', 'websockify'),
                                         '0.0.0.0:{0}'.format(port[2]), '127.0.0.1:{0}'.format(port[1]),
                                         '--verify-client',
                                         '--ssl-version', 'tlsv1_2',
                                         '--cert', certpath,
                                         '--ssl-only',
-                                        '--timeout', '60',
+                                        #'--timeout', '60',
                                         '--cafile', cafile,
                                         '--auth-plugin', 'ClientCertCNAuth',
                                         '--auth-source', ' '.join(rec for rec in users)
@@ -145,6 +114,7 @@ def connectvnc(request, uid):
             host = request.META['HTTP_HOST']
             if ':' in request.META['HTTP_HOST']:
                 host = request.META['HTTP_HOST'].split(':')[0]
+            time.sleep(2)
             return HttpResponse('https://{0}:{1}'.format(host, port[2]))
 
     new_work.status_id = 5

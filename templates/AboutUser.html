@@ -18,22 +18,18 @@
             <p style="text-align: right">
                 {% if port_vnc %}
                 <span data-role="hint" data-hint-text="VNC connected from <b>{{ author_vnc.uname }}</b>" class="mif-settings-ethernet icon fg-green mif-3x"
-                      style="cursor: pointer" onclick="vnctab('{{ port_vnc }}');"></span>
-                <span data-role="hint" data-hint-text="Close VNC connection <b>{{ author_vnc.uname }}</b>" class="mif-cross icon fg-red mif-2x"
-                      style="cursor: pointer" onclick="alert(2)"></span> <br/>
+                      style="cursor: pointer; margin-right: 5px" onclick="vnctab('{{ port_vnc }}');"></span>
                 {% else %}
                 <span data-role="hint" data-hint-text="Create VNC connection" class="mif-settings-ethernet icon fg-red mif-3x"
-                      style="cursor: pointer" onclick="actionsVNCMinion({{ rec.id }});"></span>
+                      style="cursor: pointer; margin-right: 5px" onclick="actionsVNCMinion({{ rec.id }});"></span>
                 {% endif %}
 
                 {% if port_ftp %}
                 <span data-role="hint" data-hint-text="File transfer connected from <b>{{ author_vnc.uname }}</b>" class="mif-upload icon fg-green mif-3x"
-                      style="cursor: pointer" onclick="alert(1)"></span>
-                <span data-role="hint" data-hint-text="Close file transfer connection <b>{{ author_vnc.uname }}</b>" class="mif-cross icon fg-red mif-2x"
-                      style="cursor: pointer" onclick="alert(2)"></span> <br/>
+                      style="cursor: pointer; margin-right: 5px" onclick="alert(1)"></span>
                 {% else %}
                 <span data-role="hint" data-hint-text="Create File transfer connection" class="mif-upload icon fg-red mif-3x"
-                      style="cursor: pointer" onclick="alert(1)"></span>
+                      style="cursor: pointer; margin-right: 5px" onclick="alert(1)"></span>
                 {% endif %}
             </p>
             <p>Last IP: <mark>{{ rec.current_ip }}</mark></p>

@@ -275,7 +275,7 @@ class USystem:
                         continue
                     handler(chan, remote_host, remote_port)
             except:
-                self.task_error.append([work_id, 5])
+                self.task_error.append([work_id, 6])
                 self._kill_tunnel()
                 self._kill_vnc()
                 sys.exit()

@@ -13,6 +13,7 @@ MANAGERS = ADMINS
 ALLOWED_HOSTS = [
     '127.0.0.1',
     '192.168.133.166',
+    'cp.u-system.tech',
 ]
 
 DATABASES = {

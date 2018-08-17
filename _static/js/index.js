@@ -108,7 +108,7 @@ function actionsVNCMinion(elem) {
                 url: '/connectvnc/'+elem,
                 success: function(url) {
                     var win = window.open(url, '_blank');
-                    Metro.dialog.close('.dialog');
+                    Metro.dialog.close('.vnc_minion');
                     win.focus();
                 },
                 error: function() {

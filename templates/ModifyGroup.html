@@ -13,6 +13,7 @@
         </div>
         <input {% if rec %}value="{{ rec.alias }}"{% endif %} name="grname" id="grname" type="text" data-role="input" data-prepend="<span class='mif-pencil'>" placeholder="Введите имя..." data-validate="required">
         {%if rec %}<input type="hidden" name="grid" value="{{ rec.id }}">{% endif %}
+        <input type="hidden" name="parent_id" value="{{ parent }}">
         {% csrf_token %}
     </div>
     <div class="form-group mt-10">
@@ -28,12 +29,14 @@
         let text = $('#grname').val().replace(/[^а-яА-Я\s_0-9a-zA-Z]*/g, '');
         if ($('#grname').val() === text && text !== 'Ожидают авторизации') {
             let form  = $(this);
+            var data = form.serialize();
+            $('.dialog-content').html(progress);
             $.ajax({
                 method: 'POST',
-                data: form.serialize(),
+                data: data,
                 url: '/add_group/',
                 success: function(data) {
-                    $('#group_section').html(data);
+                    $('#tree_li').html(data);
                     Metro.dialog.close('.dialog');
                 },
                 error: function() {

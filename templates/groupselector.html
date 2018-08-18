@@ -4,7 +4,10 @@
         <option value="{{ rec.id }}" {% if rec.id == cur_gr %}selected{% endif %}>{{ rec.alias }}</option>
     {% endfor %}
 </select>
+
 <script>
+    //$('.treeview').removeClass('expanded');
+    //$('.treeview ul').css('display', 'none');
     $('#group_selector').change(function () {
         let val = $(this).val();
         if ($( "#group_selector option:selected" ).text() === 'Ожидают авторизации')

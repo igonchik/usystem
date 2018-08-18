@@ -20,9 +20,13 @@ class Group(models.Model):
     author = models.CharField(max_length=100, null=False)
     create_tstamp = models.DateTimeField(default=now)
     parent_id = models.IntegerField(null=True)
+    path = models.TextField(null=False)
 
     class Meta:
         db_table = '"pubview"."usystem_group_view"'
+
+    def __unicode__(self):
+        return self.alias
 
 
 class User(models.Model):
@@ -41,7 +45,10 @@ class User(models.Model):
     policy = models.IntegerField(default=0)
 
     def isactive(self):
-        delta = datetime.now().astimezone(timezone.utc) - self.lastactivity_tstamp.astimezone(timezone.utc)
+        try:
+            delta = datetime.now().astimezone(timezone.utc) - self.lastactivity_tstamp.astimezone(timezone.utc)
+        except:
+            delta = datetime.now() - self.lastactivity_tstamp
         if (delta.days == -1 and delta.seconds > 86399-30) or (delta.days == 0 and delta.seconds < 30):
             return self.policy + 1
         else:

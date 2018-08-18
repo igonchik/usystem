@@ -38,3 +38,16 @@
     vertical-align: top;
     width: 300px;
 }
+
+.v-menu .tree_li, .v-menu .tree_li li  {
+    background-color: white !important;
+}
+
+.v-menu .tree_li li.current, .v-menu .tree_li li.current li {
+    background-color: rgb(236, 236, 236) !important;
+}
+
+.treeview {
+    overflow-y: auto;
+    max-height: 800px;
+}

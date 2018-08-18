@@ -1,0 +1,32 @@
+<ul data-role="treeview" data-on-node-click="nodeclick">
+    <li id="default_li" class="current" data-sys="1" data-path="0" data-caption="Все группы" data-icon="<span class='mif-stack'></span>"></li>
+    {% load ttags %}
+    {% tree groups|astree:"parent_id" %}{% endtree %}
+</ul>
+
+<script>
+    function nodeclick(node, tree) {
+        var data_path = $(node).attr('data-path');
+        var data_sys = $(node).attr('data-sys');
+        if (data_sys === '1')
+        {
+            $('#renamegr').css('display', 'none');
+            $('#deletegr').css('display', 'none');
+        }
+
+        if (data_path !== '' && data_path !== '0') {
+            tableFuncs.addGroupFilter();
+            if (data_sys !== '1')
+            {
+                $('#renamegr').css('display', 'inline');
+                $('#deletegr').css('display', 'inline');
+            }
+        } else {
+            tableFuncs.removeGroupFilter();
+            $('#renamegr').css('display', 'none');
+            $('#deletegr').css('display', 'none');
+        }
+    }
+    tableFuncs.removeGroupFilter();
+    update_minion_table();
+</script>

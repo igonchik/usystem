@@ -130,8 +130,11 @@ function actionsVNCMinion(elem) {
 function actionsAddGroup() {
     Metro.dialog.create({
         content: function() {
+            var data_path = $('.treeview li.current').attr('data-path');
+            if ($('.treeview li.current').attr('data-sys') === '1')
+                data_path = '';
             $.ajax({
-                url: '/add_group/',
+                url: '/add_group/?parent='+data_path,
                 success: function(data) {
                     $('.dialog-content').html(data);
                 },
@@ -158,8 +161,8 @@ function actionsAddGroup() {
 function actionsRenameGroup() {
     Metro.dialog.create({
         content: function() {
-            group_id = $('#group_selector').val();
-            if (group_id && parseInt(group_id) > 0)
+            group_id = $('.treeview li.current').attr('data-path');
+           if (group_id && parseInt(group_id) > 0)
                 group_id = group_id + '/';
             else
                 group_id = '';
@@ -189,7 +192,7 @@ function actionsRenameGroup() {
 
 
 function actionsDeleteGroup() {
-    group_id = $('#group_selector').val();
+    group_id = $('.treeview li.current').attr('data-path');
     if (group_id && parseInt(group_id) > 0)
         group_id = group_id + '/';
     else
@@ -212,7 +215,7 @@ function actionsDeleteGroup() {
                     ]
                 });
             } else {
-                $('#group_selector').val('0');
+                $('#tree_li').html(data);
             }
         },
         error: function() {
@@ -221,25 +224,27 @@ function actionsDeleteGroup() {
     });
 }
 
-
-function actionsDemo(){
+function actionsGenAdminPIN() {
     Metro.dialog.create({
-        title: "Dialog actions",
-        content: "<div>This dialog with custom actions</div>",
+        content: function() {
+            $.ajax({
+                url: '/genadminpin/',
+                success: function(data) {
+                    $('.dialog-content').html(data);
+                },
+                error: function() {
+                    $('.dialog-content').html(progresserror);
+                }
+            });
+            return progress
+        },
+        overlay: true,
+        clsDialog: 'showTop',
+        overlayClickClose: 'true',
         actions: [
             {
-                caption: "Yes, i'am",
-                cls: "js-dialog-close alert",
-                onclick: function(){
-                    alert("You choose YES");
-                }
-            },
-            {
-                caption: "No, thanks",
-                cls: "js-dialog-close",
-                onclick: function() {
-                    alert("You choose NO");
-                }
+                caption: "Закрыть",
+                cls: "js-dialog-close alert"
             }
         ]
     });

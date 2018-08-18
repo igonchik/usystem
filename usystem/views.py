@@ -180,7 +180,7 @@ def minion_json(request):
                 rec.lastactivity_tstamp.strftime("%d.%m.%Y %H:%M"),
                 rec.isactive(),
                 rec.id,
-                rec.user2group_set.all()[0].group.id
+                rec.user2group_set.all()[0].group.path
             ])
     response.update({'data': data})
     return JsonResponse(response)
@@ -190,17 +190,22 @@ def minion_json(request):
 def delete_group(request, num):
     user = get_user(__USERNAME)
     gr = Group.objects.get(id=int(num))
-    exists = User2Group.objects.filter(group=gr, user__is_master=False).exists()
+    gr_path = Group.objects.filter(path__startswith=gr.path).values_list('id', flat=True)
+    exists = User2Group.objects.filter(group_id__in=gr_path, user__is_master=False).exists()
     if exists or gr.author != user.username or gr.alias == 'Ожидают авторизации':
         return HttpResponse('exists')
-    User2Group.objects.filter(group=gr).delete()
-    gr.delete()
-    return HttpResponse('OK')
+    User2Group.objects.filter(group_id__in=gr_path).delete()
+    Group.objects.filter(path__startswith=gr.path).delete()
+    groups = Group.objects.all().order_by('id')
+    return render(request, 'GroupSelectorTree.html', {'groups': groups})
 
 
 @transaction.atomic
 def add_group(request, num=0):
     user = get_user(__USERNAME)
+    parent = 0
+    if 'parent' in request.GET:
+        parent = request.GET['parent']
     if request.method == 'POST':
         post = safe_query(request.POST)
         groups = Group.objects.all().order_by('id')
@@ -214,11 +219,23 @@ def add_group(request, num=0):
             if not ('grid' in post and post['grid'] != ''):
                 u2g = User2Group(user_id=user.id, group=gr)
                 u2g.save()
-            return render(request, 'groupselector.html', {'groups': groups, 'cur_gr': gr.id})
+            if 'parent_id' in post and post['parent_id'] != '' and \
+                    Group.objects.filter(id=int(post['parent_id'])).exists():
+                parent = Group.objects.get(id=int(post['parent_id']))
+                if parent.alias != 'Ожидают авторизации':
+                    gr.path = parent.path + str(gr.id) + '.'
+                    gr.parent_id = parent.id
+                else:
+                    gr.path = '.' + str(gr.id) + '.'
+            else:
+                gr.path = '.' + str(gr.id) + '.'
+            gr.save()
+            return render(request, 'GroupSelectorTree.html', {'groups': groups, 'cur_gr': gr.id})
         else:
             return HttpResponse('Error', status=404)
     else:
-        return render(request, 'ModifyGroup.html', dict() if num == 0 else {'rec': Group.objects.get(id=num)})
+        return render(request, 'ModifyGroup.html', {'parent': parent}
+                                                        if num == 0 else {'rec': Group.objects.get(id=num)})
 
 
 def about(request, num=0):

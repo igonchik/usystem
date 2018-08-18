@@ -13,6 +13,7 @@ create table usystem_group (
 	author character varying(100) not null default CURRENT_USER,
 	uid text not null default uuid_generate_v1mc(),
 	parent_id integer,
+	path text not null default '';
 	create_tstamp timestamp without time zone not null default now()
 );
 
@@ -222,7 +223,7 @@ create or replace rule usystem_group_view_create as on insert to pubview.usystem
   insert into public.usystem_group (alias, parent_id) values (NEW.alias,
                   (select id from pubview.usystem_group_view where id = NEW.id)) returning *;
 create or replace rule usystem_group_view_update as on update to pubview.usystem_group_view do instead
-  update public.usystem_group set alias = NEW.alias where id = (select group_id from usystem_user2group
+  update public.usystem_group set alias = NEW.alias, path=NEW.path, parent_id=NEW.parent_id where id = (select group_id from usystem_user2group
       where user_id in (select id from public.usystem_user where is_master='t' and username like CURRENT_USER
   ) and group_id = OLD.id);
 

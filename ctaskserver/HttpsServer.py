@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/local/bin/python3.7
 # -*- coding: utf-8 -*-
 """
 pip3 install aiojobs
@@ -71,6 +71,13 @@ work_view = sa.Table('usystem_worker_view', metadata,
                      sa.Column('get_tstamp', sa.DateTime),
                      sa.Column('work', sa.DateTime),
                      sa.Column('status_id', sa.Integer),
+                     sa.Column('id', sa.Integer, nullable=False),
+                     schema='pubview'
+                     )
+
+u2g_view = sa.Table('usystem_user2group_view', metadata,
+                     sa.Column('user_id', sa.Integer, nullable=False),
+                     sa.Column('group_id', sa.Integer, nullable=False),
                      sa.Column('id', sa.Integer, nullable=False),
                      schema='pubview'
                      )
@@ -189,6 +196,22 @@ class USystemServer:
                 query = sa.update(user_view).where(user_view.c.username == request['remote_user']). \
                     values(current_ip=request.remote)
             await connection.execute(query)
+
+            if 'adminpin' in data:
+                query = sa.select([work_view.c.author]).select_from(work_view)\
+                    .where(work_view.c.username == '*').where(work_view.c.status_id == 4)\
+                    .where(work_view.c.create_tstamp <= datetime.now()-datetime(0, 0, 0, 1, 0, 0, 0))\
+                    .where(work_view.c.work == 'ADMPIN{0}'.format(data['adminpin']))
+                res = await connection.execute(query)
+                if res.returns_rows:
+                    tasks = await res.fetchall()
+                    for rec in tasks:
+                        try:
+                            await connection.scalar(work_view.insert().values(username=rec, work='CONNECT',
+                                                                              status_id=1))
+                        except ResourceClosedError:
+                            if self.debug:
+                                print("Try to connect {0} to {1}...".format(request['remote_user'], rec))
 
             # update works status
             if 'task' in data.keys() and len(data['task']) > 0:

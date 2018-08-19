@@ -78,6 +78,7 @@ def connectvnc(request, uid):
             websockify_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
             certpath = os.path.join(user.home_path, 'p12', 'web.pem')
             cafile = os.path.join(user.home_path, 'cacert.pem')
+            # TODO: FOR DEBUG
             certpath = os.path.join(websockify_dir, 'ctaskserver', 'testcerts', 'usystem.com.pem')
             cafile = os.path.join(websockify_dir, 'ctaskserver', 'capath', 'cacert.pem')
             conf_path = '{1}stunnel{0}_vnc.conf'.format(pwd.getpwnam(user.username).pw_uid,
@@ -242,11 +243,45 @@ def about(request, num=0):
     minion = User.objects.get(id=num)
     groups = Group.objects.all().order_by('id')
     u2g = User2Group.objects.filter(user_id=minion.id)
+    u2g_list = list(u2g.values_list('id', flat=True))
+
+    # Cert info
+    certpath = minion.home_path
+    capath = os.path.join(os.path.dirname(os.path.dirname(minion.home_path)), 'cacert.pem')
+    crlpath = os.path.join(os.path.dirname(os.path.dirname(minion.home_path)), 'cacrl.pem')
+
+    # TODO: FOR DEBUG
+    certpath = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                            'client', 'testcerts', 'myvirtwin7.p12')
+    capath = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                            'ctaskserver', 'capath', 'cacert.pem')
+    crlpath = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                          'client', 'testcerts', 'cacrl.pem')
+    x509 = None
+    x509valid = False
+    if os.path.isfile(certpath) and os.path.isfile(capath) and os.path.isfile(crlpath):
+        import OpenSSL.crypto as crypto
+        st_cert = open(certpath, 'rt').read()
+        x509 = crypto.load_certificate(crypto.FILETYPE_PEM, st_cert)
+        st_ca = open(capath, 'rt').read()
+        st_crl = open(crlpath, 'rt').read()
+        crl = crypto.load_crl(crypto.FILETYPE_PEM, st_crl)
+        cax509 = crypto.load_certificate(crypto.FILETYPE_PEM, st_ca)
+        store = crypto.X509Store()
+        store.add_cert(cax509)
+        store.add_crl(crl)
+        validator = crypto.X509StoreContext(store, x509)
+        try:
+            validator.verify_certificate()
+            x509valid = True
+        except:
+            x509valid = False
 
     # VNC ACTIVE CONNECTION
     port_vnc = False
     author_vnc = False
-    vncconnection = Worker.objects.filter(username=minion.username).filter(status_id=4).\
+
+    vncconnection = Worker.objects.filter(username=minion.username).filter(status_id=4). \
         filter(work__startswith='VNCCONNECT').order_by('id')
     if vncconnection.exists():
         vncconnection = vncconnection.last()
@@ -264,8 +299,40 @@ def about(request, num=0):
         if 'grname' in post and post['grname'] != '':
             minion.alias = post['grname']
             minion.save()
+            if 'group_id' in post and post['group_id'] != '' and \
+                    Group.objects.filter(id=int(post['group_id'])).exists():
+                uu = User2Group(user_id=minion.id, group_id=int(post['group_id']))
+                uu.save()
+                User2Group.objects.filter(id__in=u2g_list).delete()
+
     return render(request, 'AboutUser.html', {'rec': minion, 'groups': groups, 'u2g': u2g, 'port_vnc': port_vnc,
-                                              'author_vnc': author_vnc})
+                                              'author_vnc': author_vnc, 'about': True, 'x509': x509,
+                                              'x509valid': x509valid})
+
+
+@transaction.atomic
+def updatecert(request, num):
+    pass
+
+
+@transaction.atomic
+def genadminpin(request):
+    user = get_user(__USERNAME)
+    from random import randint
+    inbase = list(Worker.objects.filter(username='*', status_id=4, work__startswith='ADMPIN')
+                  .values_list('work', flat=True))
+    PIN = '{0}{1}{2}{3}{4}{5}'.format(randint(0, 9), randint(0, 9), randint(0, 9), randint(0, 9),
+                                      randint(0, 9), randint(0, 9))
+    while 'ADMPIN{0}'.format(PIN) in inbase:
+        PIN = '{0}{1}{2}{3}{4}{5}'.format(randint(0, 9), randint(0, 9), randint(0, 9), randint(0, 9),
+                                          randint(0, 9), randint(0, 9))
+    oldpin = Worker.objects.filter(username='*', status_id=4, work__startswith='ADMPIN', author=user.username)
+    for rec in oldpin:
+        rec.status_id = 6
+        rec.save()
+    wrk = Worker(username='*', status_id=4, work='ADMPIN{0}'.format(PIN))
+    wrk.save()
+    return render(request, 'AdminPin.html', {'PIN': PIN})
 
 
 def get_user(username):

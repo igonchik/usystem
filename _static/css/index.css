@@ -43,11 +43,20 @@
     background-color: white !important;
 }
 
-.v-menu .tree_li li.current, .v-menu .tree_li li.current li {
+.v-menu .tree_li li.current, .v-menu .tree_li li.current li, li.tree_li.about li.current {
     background-color: rgb(236, 236, 236) !important;
 }
 
 .treeview {
     overflow-y: auto;
     max-height: 800px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+}
+
+li.tree_li.about .treeview {
+    overflow-y: auto;
+    max-height: 248px;
+    padding-top: 0;
+    padding-bottom: 0;
 }

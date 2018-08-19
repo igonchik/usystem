@@ -4,86 +4,164 @@
 <hr class="thin mt-4 mb-4 bg-white">
 <div class="form-group">
 
-    <ul data-role="tabs" data-tabs-position="vertical" class="vertical tabs-expand-fs" data-role-tabs="true" style="max-width: 220px">
-        <li><a href="#_target_0">Общая информация</a></li>
-        <li><a href="#_target_1">Переименовать</a></li>
-        <li><a href="#_target_2">Перевыпустить сертификат</a></li>
-        <li><a href="#_target_3">Переместить в группу</a></li>
-        <li><a href="#_target_4">Выгнать пользователя</a></li>
-        <li><a href="#_target_5">Последние изменения</a></li>
-    </ul>
+    <table class="about_user">
+        <tr>
+            <td height="1px" width="260px" style="position: relative">
+                <ul data-role="tabs" data-tabs-position="vertical" class="vertical tabs-expand-fs" data-role-tabs="true" style="max-width: 220px">
+                    <li><a href="#_target_0">Общая информация</a></li>
+                    <li><a href="#_target_1">Изменить агент</a></li>
+                    <li><a href="#_target_2">Информация о сертификате</a></li>
+                    <li><a href="#_target_4">Выгнать пользователя</a></li>
+                    <li><a href="#_target_5">Последние изменения</a></li>
+                </ul>
+            </td>
+            <td>
+                <div class="border bd-default no-border-left p-2">
+                    <div id="_target_0" class="targets">
+                        <p style="text-align: right">
+                            {% if port_vnc %}
+                                <span data-role="hint" data-hint-text="VNC connected from <b>{{ author_vnc.uname }}</b>" class="mif-settings-ethernet icon fg-green mif-3x"
+                                      style="cursor: pointer; margin-right: 5px" onclick="vnctab('{{ port_vnc }}');"></span>
+                            {% else %}
+                                <span data-role="hint" data-hint-text="Create VNC connection" class="mif-settings-ethernet icon fg-red mif-3x"
+                                      style="cursor: pointer; margin-right: 5px" onclick="actionsVNCMinion({{ rec.id }});"></span>
+                            {% endif %}
 
-    <div class="border bd-default no-border-left p-2">
-        <div id="_target_0">
-            <p style="text-align: right">
-                {% if port_vnc %}
-                <span data-role="hint" data-hint-text="VNC connected from <b>{{ author_vnc.uname }}</b>" class="mif-settings-ethernet icon fg-green mif-3x"
-                      style="cursor: pointer; margin-right: 5px" onclick="vnctab('{{ port_vnc }}');"></span>
-                {% else %}
-                <span data-role="hint" data-hint-text="Create VNC connection" class="mif-settings-ethernet icon fg-red mif-3x"
-                      style="cursor: pointer; margin-right: 5px" onclick="actionsVNCMinion({{ rec.id }});"></span>
-                {% endif %}
-
-                {% if port_ftp %}
-                <span data-role="hint" data-hint-text="File transfer connected from <b>{{ author_vnc.uname }}</b>" class="mif-upload icon fg-green mif-3x"
-                      style="cursor: pointer; margin-right: 5px" onclick="alert(1)"></span>
-                {% else %}
-                <span data-role="hint" data-hint-text="Create File transfer connection" class="mif-upload icon fg-red mif-3x"
-                      style="cursor: pointer; margin-right: 5px" onclick="alert(1)"></span>
-                {% endif %}
-            </p>
-            <p>Last IP: <mark>{{ rec.current_ip }}</mark></p>
-            <p>Date creation: <mark>{{ rec.register_tstamp|date:"d.m.Y H:i" }}</mark></p>
-            <p>Last Activity: <mark>{{ rec.lastactivity_tstamp|date:"d.m.Y H:i" }}</mark></p>
-            <p>Soft version: <mark>{{ rec.version }}</mark></p>
-        </div>
-        <div id="_target_1" style="min-height: 90px">
-            <form
-                    data-role="validator"
-                    action="javascript:"
-                    data-clear-invalid="2000"
-                    data-on-error-form="invalidForm"
-                    data-on-validate-form="validateForm" style="padding-left: 15px">
-                <div class="remark alert notshow" id="append_error">
-                    Имя пользователя должно содержать только буквы и цифры
+                            {% if port_ftp %}
+                                <span data-role="hint" data-hint-text="File transfer connected from <b>{{ author_vnc.uname }}</b>" class="mif-upload icon fg-green mif-3x"
+                                      style="cursor: pointer; margin-right: 5px" onclick="alert(1)"></span>
+                            {% else %}
+                                <span data-role="hint" data-hint-text="Create File transfer connection" class="mif-upload icon fg-red mif-3x"
+                                      style="cursor: pointer; margin-right: 5px" onclick="alert(1)"></span>
+                            {% endif %}
+                        </p>
+                        <p>Last IP: <mark>{{ rec.current_ip }}</mark></p>
+                        <p>Date creation: <mark>{{ rec.register_tstamp|date:"d.m.Y H:i" }}</mark></p>
+                        <p>Last Activity: <mark>{{ rec.lastactivity_tstamp|date:"d.m.Y H:i" }}</mark></p>
+                        <p>Soft version: <mark>{{ rec.version }}</mark></p>
+                    </div>
+                    <div id="_target_1" style="min-height: 90px" class="targets">
+                        <form
+                                data-role="validator"
+                                action="javascript:"
+                                data-clear-invalid="2000"
+                                data-on-error-form="invalidForm"
+                                data-on-validate-form="validateForm" style="padding-left: 15px">
+                            <div class="remark alert notshow" id="append_error">
+                                Имя пользователя должно содержать только буквы и цифры
+                            </div>
+                            {% csrf_token %}
+                            <input {% if rec.alias %}value="{{ rec.alias }}"{% else %}value="{{ rec.username }}"{% endif %} name="grname" id="grname" type="text" data-role="input" data-prepend="<span class='mif-pencil'>" placeholder="Введите имя..." data-validate="required">
+                            <ul style="list-style: none; margin: 10px 0 0 0;">
+                                <li id="tree_li" class="tree_li about" style="padding-left: 10px">
+                                    {% include "GroupSelectorTree.html" %}
+                                </li>
+                            </ul>
+                            <input type="hidden" name="group_id" id="group_id" value="">
+                            <div style="text-align: right; margin-top: 10px">
+                                <button class="button alert">Применить</button>
+                            </div>
+                        </form>
+                    </div>
+                    <div id="_target_2" class="targets">
+                        {% if x509 %}
+                            {% load ttags %}
+                            <p>Валиден: {% if x509valid %}
+                                <mark>{{ x509.get_notBefore|x509timestamp|date:"d.m.Y H:i" }} - {{ x509.get_notAfter|x509timestamp|date:"d.m.Y H:i" }}</mark>
+                            {% else %}
+                                <mark class="error">Не валиден</mark>
+                            {% endif %}
+                            </p>
+                            <p>Subject: <mark>/O={{ x509.get_subject.O }}/CN={{ x509.get_subject.CN }}</mark></p>
+                            <div style="text-align: right; margin-top: 10px">
+                                <button class="button alert" id="reSignX509" onclick="reSignX509()">Перевыпустить</button>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div id="_target_4" class="targets">
+                        Cream soup is just not the same without basil
+                    </div>
+                    <div id="_target_5" class="targets">
+                        Cream soup is just not the same without basil
+                    </div>
                 </div>
-                {% csrf_token %}
-                <input {% if rec.alias %}value="{{ rec.alias }}"{% else %}value="{{ rec.username }}"{% endif %} name="grname" id="grname" type="text" data-role="input" data-prepend="<span class='mif-pencil'>" placeholder="Введите имя..." data-validate="required">
-                <button class="button place-right alert" style="margin-top: 20px">Применить</button>
-            </form>
-        </div>
-        <div id="_target_2">
-            The shield is a post-apocalyptic nanomachine.
-        </div>
-        <div id="_target_3">
-            Cream soup is just not the same without basil
-        </div>
-        <div id="_target_4">
-            Cream soup is just not the same without basil
-        </div>
-        <div id="_target_5">
-            Cream soup is just not the same without basil
-        </div>
-    </div>
+
+            </td>
+        </tr>
+    </table>
 </div>
-<div class="form-group mt-10">
-    <a href="#" class="button place-right js-dialog-close">Закрыть</a>
-</div>
+
+<div class="dialog-actions text-right" style="padding-right: 5px"><button class="button js-dialog-close">Закрыть</button></div>
 
 <style type="text/css">
     .bd-default {
-        position: absolute;
-        top: 0;
-        left: 220px;
         width: 630px;
-        min-height: 100%;
     }
+
+    .bd-default div.targets {
+        min-height: 208px;
+    }
+
+    .tabs-expand-fs {
+        position: absolute;
+        left: 0;
+        top: 0;
+    }
+
+    .vertical.tabs-expand-fs {
+        min-height: 100%;
+        height: 100%;
+    }
+
+    .about_user td {
+        vertical-align: top;
+    }
+
+    mark.error {
+        background-color: #ff00001a;
+    }
+
 </style>
 
 <script>
     function vnctab(url) {
         var win = window.open(url, '_blank');
         win.focus();
+    }
+
+    function nodeinclick(node, tree) {
+        $('#group_id').val($(node).attr('data-path'));
+    }
+
+    function reSignX509() {
+        Metro.dialog.create({
+            overlay: true,
+            clsDialog: 'showTop x509d',
+            width: 350,
+            overlayClickClose: 'true',
+            content: function() {
+                $.ajax({
+                    url: '/updatecert/'+'{{ rec.id }}'+'/',
+                    success: function(data) {
+                        $('.dialog-content.x509d').html(data);
+                    },
+                    error: function() {
+                        $('.dialog-content.x509d').html(progresserror);
+                    }
+                });
+                return progress
+            },
+            actions: [
+                {
+                    caption: "Отмена",
+                    cls: "js-dialog-close place-right",
+                },
+                {
+                    caption: "Перевыпустить",
+                    cls: "js-dialog-close alert",
+                }
+            ]
+        });
     }
 
     function validateForm()

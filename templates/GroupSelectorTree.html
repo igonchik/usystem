@@ -1,4 +1,4 @@
-<ul data-role="treeview" data-on-node-click="nodeclick">
+<ul data-role="treeview" {% if about %}data-on-node-click="nodeinclick"{% else %}data-on-node-click="nodeclick"{% endif %}>
     <li id="default_li" class="current" data-sys="1" data-path="0" data-caption="Все группы" data-icon="<span class='mif-stack'></span>"></li>
     {% load ttags %}
     {% tree groups|astree:"parent_id" %}{% endtree %}
@@ -28,5 +28,11 @@
         }
     }
     tableFuncs.removeGroupFilter();
+    {% if about %}
+        $('.tree_li.about *[data-sys="1"]').css('display', 'none');
+        {% for rec in u2g %}
+            $('.tree_li.about *[data-path="{{ rec.group_id }}"]').addClass("current");
+        {% endfor %}
+    {% endif %}
     update_minion_table();
 </script>

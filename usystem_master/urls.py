@@ -15,9 +15,11 @@ urlpatterns = [
                   url(r'^connectvnc/(?P<uid>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/$', connectvnc,
                       name='connectvnc'),
                   url(r'^control_json/$', minion_json, name='minion_json'),
+                  url(r'^genadminpin/$', genadminpin, name='genadminpin'),
                   url(r'^add_group/$', add_group, name='add_group'),
                   url(r'^delete_group/(?P<num>\d+)/$', delete_group, name='delete_group'),
                   url(r'^about/(?P<num>\d+)/$', about, name='about'),
                   url(r'^add_group/(?P<num>\d+)/', add_group, name='add_group'),
+                  url(r'^updatecert/(?P<num>\d+)/', updatecert, name='updatecert'),
                   url(r'^connectvnc/(?P<uid>\d+)/$', connectvnc, name='connectvnc'),
               ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

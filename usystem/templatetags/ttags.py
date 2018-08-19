@@ -1,5 +1,6 @@
 from django import template
 from collections import defaultdict
+from datetime import datetime
 
 register = template.Library()
 
@@ -86,3 +87,13 @@ def astree(items, attribute):
                 yield sub_items
 
     return list(tree_level(None))
+
+
+@register.filter
+def x509Valid(item):
+    return False
+
+
+@register.filter
+def x509timestamp(item):
+    return datetime(int(item[0:4]), int(item[4:6]), int(item[6:8]), int(item[8:10]), int(item[10:12]), int(item[12:14]))

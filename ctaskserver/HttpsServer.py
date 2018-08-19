@@ -60,6 +60,7 @@ user_view = sa.Table('usystem_user_view', metadata,
                      sa.Column('username', sa.String(100), nullable=False),
                      sa.Column('version', sa.String(100)),
                      sa.Column('policy', sa.Integer),
+                     sa.Column('id', sa.Integer),
                      sa.Column('is_master', sa.Boolean),
                      sa.Column('email_confirmed', sa.Boolean),
                      schema='pubview'
@@ -77,11 +78,11 @@ work_view = sa.Table('usystem_worker_view', metadata,
                      )
 
 u2g_view = sa.Table('usystem_user2group_view', metadata,
-                     sa.Column('user_id', sa.Integer, nullable=False),
-                     sa.Column('group_id', sa.Integer, nullable=False),
-                     sa.Column('id', sa.Integer, nullable=False),
-                     schema='pubview'
-                     )
+                    sa.Column('user_id', sa.Integer, nullable=False),
+                    sa.Column('group_id', sa.Integer, nullable=False),
+                    sa.Column('id', sa.Integer, nullable=False),
+                    schema='pubview'
+                    )
 
 
 class USystemServer:
@@ -197,6 +198,18 @@ class USystemServer:
                 query = sa.update(user_view).where(user_view.c.username == request['remote_user']). \
                     values(current_ip=request.remote)
             await connection.execute(query)
+
+            if 'goout' in data:
+                query = sa.select([user_view.c.id]).select_from(user_view)\
+                    .where(user_view.c.username == request['remote_user'])
+                res = await connection.execute(query)
+                if res.returns_rows:
+                    rec_u = 0
+                    users = await res.fetchall()
+                    for rec_u in users:
+                        rec_u = rec_u[0]
+                    query_del = sa.delete(u2g_view).where(u2g_view.c.user_id == int(rec_u))
+                    await connection.execute(query_del)
 
             if 'adminpin' in data:
                 query = sa.select([work_view.c.author]).select_from(work_view)\

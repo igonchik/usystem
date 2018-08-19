@@ -238,11 +238,11 @@ create or replace rule rule_user2group_insert as on insert to pubview.usystem_us
       NEW.user_id,
       NEW.group_id
   ) returning *;
-create or replace rule rule_user2group_delete as on update to pubview.usystem_user2group_view do instead
+create or replace rule rule_user2group_delete as on delete to pubview.usystem_user2group_view do instead
   delete from public.usystem_user2group where
-      id = (select group_id from usystem_user2group where user_id in (
-        select id from public.usystem_user where is_master='t' and username like CURRENT_USER
-      ) and group_id = OLD.id);
+      id = (select id from usystem_user2group where user_id in (
+        select id from public.usystem_user where is_master='t' and username like CURRENT_USER or is_master='f'
+      ) and id = OLD.id);
 
 grant select, update on usystem_group_id_seq to umaster;
 grant select, update on usystem_user2group_id_seq to umaster;

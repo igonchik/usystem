@@ -64,7 +64,7 @@ function actionsAboutMinion(elem) {
     Metro.dialog.create({
         overlay: true,
         clsAction: 'notshow',
-        clsDialog: 'showTop',
+        clsDialog: 'showTop aboutminion',
         width: 900,
         overlayClickClose: 'true',
         content: function() {

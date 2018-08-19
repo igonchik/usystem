@@ -136,7 +136,8 @@ create or replace rule pubuser_confirm as on update to usystem_pubuser do instea
 
 create or replace view  pubview.usystem_group_view as
 			select * from usystem_group where author like CURRENT_USER or id in (select group_id from usystem_user2group
-			        where user_id in (select id from usystem_user where username like CURRENT_USER and is_master = 't'));
+			        where user_id in (select id from usystem_user where username like CURRENT_USER and is_master = 't'
+			          or is_master = 'f'));
 
 create or replace view  pubview.usystem_user2group_view as
 	select * from usystem_user2group where group_id in (select id from pubview.usystem_group_view);
@@ -151,7 +152,8 @@ create or replace view  pubview.usystem_programm_view as
 grant insert on pubview.usystem_programm_view to uminion;
 grant select,insert,update,delete on pubview.usystem_programm_view to umaster;
 
-grant select on pubview.usystem_user2group_view to uminion;
+grant select,delete on pubview.usystem_user2group_view to uminion;
+
 grant select,insert,delete on pubview.usystem_user2group_view to umaster;
 grant select,update on pubview.usystem_user_view to uminion;
 grant select,update on pubview.usystem_user_view to umaster;
@@ -238,11 +240,12 @@ create or replace rule rule_user2group_insert as on insert to pubview.usystem_us
       NEW.user_id,
       NEW.group_id
   ) returning *;
+
 create or replace rule rule_user2group_delete as on delete to pubview.usystem_user2group_view do instead
   delete from public.usystem_user2group where
-      id = (select id from usystem_user2group where user_id in (
+      user_id in (
         select id from public.usystem_user where is_master='t' and username like CURRENT_USER or is_master='f'
-      ) and id = OLD.id);
+      ) and user_id = OLD.user_id;
 
 grant select, update on usystem_group_id_seq to umaster;
 grant select, update on usystem_user2group_id_seq to umaster;

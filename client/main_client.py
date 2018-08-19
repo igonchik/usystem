@@ -133,17 +133,18 @@ class UGuiClient:
             QtWidgets.QMessageBox.about(self, u"Ошибка!", u"Не удалось завершить соединение!")
 
     def admin_logindef(self):
-        if self.usystem_gid:
-            self.send_task('groupout')
         self.usystem.adminpin = ''
         self.help_dialog = LogInGroup()
         self.help_dialog.exec_()
         global ADMIN_PIN
         self.usystem.adminpin = ADMIN_PIN
         ADMIN_PIN = '******'
+        if self.usystem_gid:
+            self.usystem.goout = self.usystem_gid
 
     def admin_logoutdef(self):
-        self.send_task('groupout')
+        if self.usystem_gid:
+            self.usystem.goout = self.usystem_gid
 
     def touch_allowdef(self):
         self.security_option = 1
@@ -171,7 +172,15 @@ class UGuiClient:
         import OpenSSL.crypto as crypto
         st_cert = open(self.usystem.usysapp.cert, 'rt').read()
         x509 = crypto.load_certificate(crypto.FILETYPE_PEM, st_cert)
-        return [x509.get_subject().CN, x509.get_subject().O]
+        o = ''
+        try:
+            o = x509.get_subject().O
+        except:
+            pass
+        if o != '':
+            return [x509.get_subject().CN, x509.get_subject().O]
+        else:
+            return [x509.get_subject().CN, False]
 
     def __init__(self):
         self.app = QtWidgets.QApplication(sys.argv)

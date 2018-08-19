@@ -137,16 +137,16 @@
         Metro.dialog.create({
             overlay: true,
             clsDialog: 'showTop x509d',
-            width: 350,
+            width: 450,
             overlayClickClose: 'true',
             content: function() {
                 $.ajax({
                     url: '/updatecert/'+'{{ rec.id }}'+'/',
                     success: function(data) {
-                        $('.dialog-content.x509d').html(data);
+                        $('.x509d').html(data);
                     },
                     error: function() {
-                        $('.dialog-content.x509d').html(progresserror);
+                        $('.x509d').html(progresserror);
                     }
                 });
                 return progress

@@ -146,10 +146,21 @@ def minion_json(request):
     },
     """
     user = get_user(__USERNAME)
-    groups = Group.objects.filter(user2group__user_id=user.id).values_list('id', flat=True)
+    groups = Group.objects.filter(user2group__user_id=user.id).values_list('id', flat=True).order_by('id')
     groups_id = list(groups)
     uusers = User.objects.filter(user2group__group__id__in=groups_id) \
         .prefetch_related('user2group_set__group').prefetch_related('programm_set__classname')
+
+    find_connect = Worker.objects.filter(status_id=1).filter(work__startswith='CONNECT_').filter(author='uminion_')
+    trying_connect = list()
+    if find_connect.exists():
+        find_connect = list(find_connect.values_list('work', flat=True))
+        user_toconnect = list()
+        for rec in find_connect:
+            user_toconnect.append(rec[8:])
+        trying_connect = list(User.objects.filter(username__in=user_toconnect)
+                              .prefetch_related('programm_set__classname'))
+
     response = dict()
     h = list()
     h.append({'name': 'name', 'title': 'Name', 'sortable': True, 'sortDir': 'asc', 'format': 'string'})
@@ -182,6 +193,20 @@ def minion_json(request):
                 rec.isactive(),
                 rec.id,
                 rec.user2group_set.all()[0].group.path
+            ])
+    for rec in trying_connect:
+        if not rec.is_master:
+            data.append([
+                rec.username if not rec.alias else rec.alias,
+                '-',
+                rec.version,
+                rec.programm_set.filter(classname_id=1)[0].name if rec.programm_set.filter(classname_id=1).exists()
+                else '',
+                rec.register_tstamp.strftime("%d.%m.%Y"),
+                rec.lastactivity_tstamp.strftime("%d.%m.%Y %H:%M"),
+                rec.isactive(),
+                rec.id,
+                '.' + str(groups_id[0]) + '.'
             ])
     response.update({'data': data})
     return JsonResponse(response)
@@ -244,6 +269,8 @@ def about(request, num=0):
     groups = Group.objects.all().order_by('id')
     u2g = User2Group.objects.filter(user_id=minion.id)
     u2g_list = list(u2g.values_list('id', flat=True))
+    if len(u2g_list) == 0:
+        return updatecert(request, num)
 
     # Cert info
     certpath = minion.home_path
@@ -312,7 +339,8 @@ def about(request, num=0):
 
 @transaction.atomic
 def updatecert(request, num):
-    pass
+    import OpenSSL.crypto as crypto
+    return render(request, 'GenX509.html', {})
 
 
 @transaction.atomic

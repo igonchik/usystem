@@ -1,0 +1,33 @@
+<form
+        data-role="validator"
+        id="x509form"
+        action="javascript:"
+        data-clear-invalid="2000"
+        data-on-error-form="invalidForm"
+        data-on-validate-form="validateForm">
+    <span class="mif-users mif-4x place-right" style="margin-top: -10px;"></span>
+    <h2 class="text-light">{%if rec %}Изменить группу{% else %}Создать группу{% endif %}</h2>
+    <hr class="thin mt-4 mb-4 bg-white">
+    <div class="form-group">
+        <div class="remark alert notshow" id="append_error">
+            Название группы должно содержать только буквы и цифры
+        </div>
+        <input {% if rec %}value="{{ rec.alias }}"{% endif %} name="grname" id="grname" type="text" data-role="input" data-prepend="<span class='mif-pencil'>" placeholder="Введите имя..." data-validate="required">
+        {%if rec %}<input type="hidden" name="grid" value="{{ rec.id }}">{% endif %}
+        <input type="hidden" name="parent_id" value="{{ parent }}">
+        {% csrf_token %}
+    </div>
+    <div class="form-group mt-10">
+        <a href="#" class="button place-right js-dialog-close">Отмена</a>
+        <button class="button alert">{%if rec %}Изменить{% else %}Создать{% endif %}</button>
+    </div>
+</form>
+
+<script>
+    var width = $('#x509form').parent().parent().width();
+    var left = $('#x509form').parent().parent().position().left;
+    if (width > 448 && !$('#x509form').parent().hasClass('x509d')) {
+        $('#x509form').parent().parent().css('width', '450px');
+        $('#x509form').parent().parent().css('left', left + 225 + 'px');
+    }
+</script>

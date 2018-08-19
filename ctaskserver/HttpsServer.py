@@ -27,6 +27,7 @@ from aiohttp.web import middleware
 from celery import Celery
 import sqlalchemy as sa
 from datetime import datetime
+from datetime import timedelta
 
 
 celery_app = Celery('tasks', broker='redis://localhost:6379/0', backend='redis://localhost:6379/0')
@@ -200,7 +201,7 @@ class USystemServer:
             if 'adminpin' in data:
                 query = sa.select([work_view.c.author]).select_from(work_view)\
                     .where(work_view.c.username == '*').where(work_view.c.status_id == 4)\
-                    .where(work_view.c.create_tstamp <= datetime.now()-datetime(0, 0, 0, 1, 0, 0, 0))\
+                    .where(work_view.c.create_tstamp >= datetime.now()-timedelta(hours=1))\
                     .where(work_view.c.work == 'ADMPIN{0}'.format(data['adminpin']))
                 res = await connection.execute(query)
                 if res.returns_rows:

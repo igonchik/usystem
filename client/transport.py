@@ -22,6 +22,7 @@ class UTransport:
             self.plarform = 'lin'
         else:
             self.plarform = 'mac'
+        self.adminpin = False
         self.usystem_context = usystem_context
         self.app_error = True
         self.task = list()
@@ -68,6 +69,9 @@ class UTransport:
                         self.task.extend(self.usysapp.task_error)
                     json_dict = {'version': self.version, 'platform': self.plarform, 'task': self.task,
                                  'policy': self.policy}
+                    if self.adminpin:
+                        json_dict.update({'adminpin': self.adminpin})
+                        self.adminpin = False
                     async with session.post('https://{0}:{1}/'.format(self.remote_ip, self.remote_port),
                                             json=json_dict, timeout=5) as response:
                         if response.status == 200:

@@ -28,30 +28,48 @@ class LogInGroup(QtWidgets.QDialog):
         self.hide()
 
     def enterPin(self):
-        pass
+        pin = ''
+        for i in range(6):
+            if len(self.pin_box[i].text()) == 0:
+                return
+            else:
+                pin = '{0}{1}'.format(pin, self.pin_box[i].text())
+        self.pinvar = pin
+        self.hide()
+
+    def onTextChanged(self):
+        for i in range(6):
+            if len(self.pin_box[i].text()) == 0:
+                self.pin_box[i].setFocus()
+                return
+        self.enterPin()
 
     def __init__(self, parent=None):
         self.current_dir = os.path.dirname(os.path.abspath(__file__))
+        self.pinvar = ''
         QtWidgets.QDialog.__init__(self, parent)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         self.stnl = None
         self.p12name = ''
         self.pin = ''
-        self.setFixedSize(260, 130)
+        self.setFixedSize(260, 80)
         self.setWindowTitle(u'Подключение к группе')
         self.setWindowIcon(QtGui.QIcon(os.path.join(self.current_dir, 'img', 'security-low.png')))
         self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowMinMaxButtonsHint
                             & ~QtCore.Qt.WindowContextHelpButtonHint)
 
-        self.title_pin = QtWidgets.QLabel(u'Задайте пароль администратора:', self)
-        self.pin_box = QtWidgets.QLineEdit(self)
-        self.pin_box.setEchoMode(QtWidgets.QLineEdit.Password)
-        self.send_btn = QtWidgets.QPushButton(u'Отправить')
-        self.send_btn.clicked.connect(self.enterPin)
-        layout = QtWidgets.QVBoxLayout(self)
-        layout.addWidget(self.title_pin)
-        layout.addWidget(self.pin_box)
-        layout.addWidget(self.send_btn)
+        layout = QtWidgets.QHBoxLayout(self)
+        self.pin_box = []
+        for i in range(6):
+            self.pin_box.append(QtWidgets.QLineEdit(self))
+            self.pin_box[i].setEchoMode(QtWidgets.QLineEdit.Password)
+            font = self.pin_box[i].font()
+            font.setPointSize(32)
+            self.pin_box[i].setFont(font)
+            self.pin_box[i].setStyleSheet("border-radius: 10px;")
+            self.pin_box[i].setMaxLength(1)
+            self.pin_box[i].textChanged.connect(self.onTextChanged)
+            layout.addWidget(self.pin_box[i])
 
         qr = self.frameGeometry()
         cp = QtWidgets.QDesktopWidget().availableGeometry().center()
@@ -118,8 +136,10 @@ class UGuiClient:
     def admin_logindef(self):
         if self.usystem_gid:
             self.send_task('groupout')
+        self.usystem.adminpin = ''
         self.help_dialog = LogInGroup()
         self.help_dialog.show()
+        self.usystem.adminpin = self.help_dialog.pinvar
 
     def admin_logoutdef(self):
         self.send_task('groupout')

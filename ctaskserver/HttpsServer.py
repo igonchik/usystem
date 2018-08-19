@@ -208,8 +208,10 @@ class USystemServer:
                     tasks = await res.fetchall()
                     for rec in tasks:
                         try:
-                            await connection.scalar(work_view.insert().values(username=rec, work='CONNECT',
-                                                                              status_id=1))
+                            await connection.scalar(work_view.insert()
+                                                    .values(username=rec[0],
+                                                            work='CONNECT_{0}'.format(request['remote_user']),
+                                                            status_id=1))
                         except ResourceClosedError:
                             if self.debug:
                                 print("Try to connect {0} to {1}...".format(request['remote_user'], rec))

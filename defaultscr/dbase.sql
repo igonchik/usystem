@@ -189,6 +189,7 @@ grant select, insert, update on  pubview.usystem_worker_view to umaster;
 grant select, insert, update on  pubview.usystem_worker_view to uminion;
 grant select,update on sequence usystem_worker_id_seq to uuser;
 grant select,update on sequence usystem_worker_id_seq to umaster;
+grant select,update on sequence usystem_worker_id_seq to uminion;
 grant insert,update on usystem_pubworker to uuser;
 
 

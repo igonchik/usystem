@@ -22,6 +22,8 @@ from multiprocessing import Pool
 import _thread
 
 
+ADMIN_PIN = ''
+
 class LogInGroup(QtWidgets.QDialog):
     def closeEvent(self, evnt):
         evnt.ignore()
@@ -34,7 +36,8 @@ class LogInGroup(QtWidgets.QDialog):
                 return
             else:
                 pin = '{0}{1}'.format(pin, self.pin_box[i].text())
-        self.pinvar = pin
+        global ADMIN_PIN
+        ADMIN_PIN = pin
         self.hide()
 
     def onTextChanged(self):
@@ -46,12 +49,8 @@ class LogInGroup(QtWidgets.QDialog):
 
     def __init__(self, parent=None):
         self.current_dir = os.path.dirname(os.path.abspath(__file__))
-        self.pinvar = ''
-        QtWidgets.QDialog.__init__(self, parent)
+        QtWidgets.QDialog.__init__(self, None)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
-        self.stnl = None
-        self.p12name = ''
-        self.pin = ''
         self.setFixedSize(260, 80)
         self.setWindowTitle(u'Подключение к группе')
         self.setWindowIcon(QtGui.QIcon(os.path.join(self.current_dir, 'img', 'security-low.png')))
@@ -138,8 +137,10 @@ class UGuiClient:
             self.send_task('groupout')
         self.usystem.adminpin = ''
         self.help_dialog = LogInGroup()
-        self.help_dialog.show()
-        self.usystem.adminpin = self.help_dialog.pinvar
+        self.help_dialog.exec_()
+        global ADMIN_PIN
+        self.usystem.adminpin = ADMIN_PIN
+        ADMIN_PIN = '******'
 
     def admin_logoutdef(self):
         self.send_task('groupout')

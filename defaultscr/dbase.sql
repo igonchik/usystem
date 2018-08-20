@@ -245,7 +245,7 @@ create or replace rule rule_user2group_delete as on delete to pubview.usystem_us
   delete from public.usystem_user2group where
       user_id in (
         select id from public.usystem_user where is_master='t' and username like CURRENT_USER or is_master='f'
-      ) and user_id = OLD.user_id;
+      ) and user_id = OLD.user_id and id=OLD.id;
 
 grant select, update on usystem_group_id_seq to umaster;
 grant select, update on usystem_user2group_id_seq to umaster;

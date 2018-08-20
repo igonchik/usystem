@@ -340,6 +340,63 @@ def about(request, num=0):
 @transaction.atomic
 def updatecert(request, num):
     import OpenSSL.crypto as crypto
+    import random
+    user = get_user(__USERNAME)
+    minion = User.objects.get(id=int(num))
+    if request.method == 'POST' and 'cakey' in request.POST:
+        key = safe_query(request.POST)
+        cakey = key['cakey']
+        # Cert info
+        capath = os.path.join(os.path.dirname(os.path.dirname(user.home_path)), 'cacert.pem')
+        crlpath = os.path.join(os.path.dirname(os.path.dirname(user.home_path)), 'cacrl.pem')
+        # TODO: FOR DEBUG
+        capath = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                              'ctaskserver', 'capath', 'cacert.pem')
+        crlpath = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                               'client', 'testcerts', 'cacrl.pem')
+        st_ca = open(capath, 'rt').read()
+        ca_cert = crypto.load_certificate(crypto.FILETYPE_PEM, st_ca)
+        ca_key = crypto.load_privatekey(crypto.FILETYPE_PEM, st_ca, passphrase=cakey)
+        ca_subj = ca_cert.get_subject()
+
+        ###############
+        # Client Cert #
+        ###############
+        client_key = crypto.PKey()
+        client_key.generate_key(crypto.TYPE_RSA, 2048)
+        client_cert = crypto.X509()
+        client_cert.set_version(2)
+        client_cert.set_serial_number(random.randint(50000000, 100000000))
+        client_subj = client_cert.get_subject()
+        client_subj.commonName = minion.username
+        client_subj.O = ca_subj.O
+
+        client_cert.add_extensions([
+            crypto.X509Extension("basicConstraints", False, "CA:FALSE"),
+            crypto.X509Extension("subjectKeyIdentifier", False, "hash", subject=client_cert),
+        ])
+
+        client_cert.add_extensions([
+            crypto.X509Extension("authorityKeyIdentifier", False, "keyid:always", issuer=ca_cert),
+            crypto.X509Extension("extendedKeyUsage", False, "clientAuth"),
+            crypto.X509Extension("keyUsage", False, "digitalSignature"),
+        ])
+
+        client_cert.set_issuer(ca_subj)
+        client_cert.set_pubkey(client_key)
+        client_cert.gmtime_adj_notBefore(0)
+        client_cert.gmtime_adj_notAfter(10 * 365 * 24 * 60 * 60)
+        client_cert.sign(ca_key, 'sha256')
+
+        # Save certificate
+        with open(os.path.join(os.path.dirname(os.path.dirname(user.home_path)), 'p12', minion.username + '.p12'),
+                  "wt") as f:
+            f.write(crypto.dump_certificate(crypto.FILETYPE_PEM, client_cert))
+
+        # Save private key
+        with open(os.path.join(os.path.dirname(os.path.dirname(user.home_path)), 'p12', minion.username + '.p12'),
+                  "at") as f:
+            f.write(crypto.dump_privatekey(crypto.FILETYPE_PEM, client_key))
     return render(request, 'GenX509.html', {})
 
 

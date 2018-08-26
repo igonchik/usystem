@@ -5,21 +5,25 @@
         data-clear-invalid="2000"
         data-on-error-form="invalidForm"
         data-on-validate-form="validateForm">
-    <span class="mif-users mif-4x place-right" style="margin-top: -10px;"></span>
-    <h2 class="text-light">{%if rec %}Изменить группу{% else %}Создать группу{% endif %}</h2>
+    <span class="mif-key mif-4x place-right" style="margin-top: -10px;"></span>
+    <h2 class="text-light">Подключение пользователя к группе</h2>
     <hr class="thin mt-4 mb-4 bg-white">
     <div class="form-group">
         <div class="remark alert notshow" id="append_error">
-            Название группы должно содержать только буквы и цифры
+            Укажите группу пользователя
         </div>
-        <input {% if rec %}value="{{ rec.alias }}"{% endif %} name="grname" id="grname" type="text" data-role="input" data-prepend="<span class='mif-pencil'>" placeholder="Введите имя..." data-validate="required">
-        {%if rec %}<input type="hidden" name="grid" value="{{ rec.id }}">{% endif %}
-        <input type="hidden" name="parent_id" value="{{ parent }}">
+        <input name="pin" id="pin" type="password" data-role="input" data-validate="required" data-prepend="<span class='mif-key'>" placeholder="Введите pass phrase...">
         {% csrf_token %}
+        <input type="hidden" name="path" id="data_path1" value="">
+        <ul style="list-style: none; margin: 10px 0 0 0;">
+            <li id="tree_li" class="tree_li about">
+                {% include "GroupSelectorTree.html" %}
+            </li>
+        </ul>
     </div>
     <div class="form-group mt-10">
         <a href="#" class="button place-right js-dialog-close">Отмена</a>
-        <button class="button alert">{%if rec %}Изменить{% else %}Создать{% endif %}</button>
+        <button class="button alert">Подтвердить</button>
     </div>
 </form>
 
@@ -29,5 +33,41 @@
     if (width > 448 && !$('#x509form').parent().hasClass('x509d')) {
         $('#x509form').parent().parent().css('width', '450px');
         $('#x509form').parent().parent().css('left', left + 225 + 'px');
+    }
+</script>
+
+
+<script>
+    function nodeinclick(node, tree) {
+        $('#data_path1').val($(node).attr('data-path'));
+    }
+
+    function validateForm()
+    {
+        var text = $('#data_path1').val();
+        if (text !== '') {
+            var form  = $(this);
+            var data = form.serialize();
+            $('.dialog-content').html(progress);
+            $.ajax({
+                method: 'POST',
+                data: data,
+                url: '/updatecert/{{ minion.id }}/',
+                success: function(data) {
+                    Metro.dialog.close('.dialog');
+                },
+                error: function() {
+                    $('.dialog-actions ').removeClass('notshow');
+                    $('.dialog-content').html(progresserror);
+                }
+            });
+        } else {
+            $('#append_error').removeClass('notshow');
+            var form  = $(this);
+            form.addClass("ani-ring");
+            setTimeout(function(){
+                form.removeClass("ani-ring");
+            }, 1000);
+        }
     }
 </script>

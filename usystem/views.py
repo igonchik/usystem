@@ -339,15 +339,59 @@ def about(request, num=0):
 
 @transaction.atomic
 def updatecert(request, num):
-    import OpenSSL.crypto as crypto
-    return render(request, 'GenX509.html', {})
+    minion = User.objects.get(id=num)
+    groups = Group.objects.all().order_by('id')
+    user = get_user(__USERNAME)
+    if request.method == 'POST':
+        post = safe_query(request.POST)
+        if 'path' in post and 'pin' in post and post['path'] != '' and post['pin'] != '':
+            try:
+                path = int(post['path'])
+                group = Group.objects.get(id=path)
+            except:
+                group = None
+            if group:
+                genrsa = ['openssl', 'genrsa', '-out', '/home/{1}/private/{0}.key'.format(minion.username,
+                                                                                          user.username),
+                          '2048']
+                genreq = ['openssl', 'req', '-new', '-batch',
+                          '-config', '/home/{0}/openssl.cnf'.format(user.username),
+                          '-key', '/home/{1}/private/{0}.key'.format(minion.username, user.username),
+                          '-out', '/home/{1}/reqs/{0}.req'.format(minion.username, user.username),
+                          '-subj', '/C=RU/O={1}/CN={0}'.format(minion.username, user.username)]
+                gencert = ['openssl', 'ca', '-config', '/home/{0}/openssl.cnf'.format(user.username), '-batch',
+                           '-days', '300', '-notext', '-md', 'sha256', '-in',
+                           '/home/{1}/reqs/{0}.req'.format(minion.username, user.username), '-out',
+                           '/home/{1}/certs/{0}.pem'.format(minion.username, user.username), '-passin',
+                           'pass:{0}'.format(post['pin'])]
+                subprocess.check_output(genrsa)
+                subprocess.check_output(genreq)
+                subprocess.check_output(gencert)
+                data1 = open('/home/{1}/certs/{0}.pem'.format(minion.username, user.username), 'rt').read()
+                data2 = open('/home/{1}/private/{0}.key'.format(minion.username, user.username), 'rt').read()
+                with open('/home/{1}/p12/{0}.pem'.format(minion.username,  user.username), 'w') as file:
+                    file.write(data1)
+                    file.write(data2)
+                wrk = Worker(username=minion.username, status_id=1, work='CERTUPDATE/home/{1}/p12/{0}.pem'
+                             .format(minion.username,  user.username))
+                wrk.save()
+                u2g = User2Group(group_id=group.id, user_id=minion.id)
+                u2g.save()
+                tsave = Worker.objects.filter(status_id=1, work='CONNECT_{0}'.format(minion.username))
+                for rec in tsave:
+                    rec.status_id = 6
+                    rec.save()
+                return HttpResponse('ok')
+    return render(request, 'GenX509.html', {'groups': groups, 'minion': minion, 'about': True})
 
 
 @transaction.atomic
 def genadminpin(request):
+    from datetime import timedelta
     user = get_user(__USERNAME)
     from random import randint
-    inbase = list(Worker.objects.filter(username='*', status_id=4, work__startswith='ADMPIN')
+    inbase = list(Worker.objects.filter(username='*', status_id=4, work__startswith='ADMPIN',
+                                        create_tstamp__gte=datetime.now()-timedelta(hours=1))
                   .values_list('work', flat=True))
     PIN = '{0}{1}{2}{3}{4}{5}'.format(randint(0, 9), randint(0, 9), randint(0, 9), randint(0, 9),
                                       randint(0, 9), randint(0, 9))

@@ -38,7 +38,7 @@ loginpass=$pass
 pass=`apg -n 1 -M SNLC -m 8 -x 10`
 openssl genrsa -des3 -passout pass:$pass -out /home/$username/private/ca.key 4096 1>&2 2>/dev/null
 openssl req -x509 -new -sha256 -days 1825 -key /home/$username/private/ca.key -out /home/$username/cacert.pem -subj "/C=RU/O=$username/CN=$username/emailAddress=$email" -passin pass:$pass
-openssl ca -config /home/$username/openssl.cnf -gencrl -passin pass:$pass -out /home/$username/cacrl.pem
+openssl ca -config /home/$username/openssl.cnf -gencrl -passin pass:$pass -out /home/$username/cacrl.pem -crldays 1825
 chmod 0600 /home/$username/private/ca.key
 chown $username:uuser /home/$username/private/ca.key
 chmod 0640 /home/$username/cacert.pem

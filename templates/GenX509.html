@@ -54,6 +54,7 @@
                 data: data,
                 url: '/updatecert/{{ minion.id }}/',
                 success: function(data) {
+                    update_minion_table();
                     Metro.dialog.close('.dialog');
                 },
                 error: function() {

@@ -164,7 +164,7 @@ class USystem:
                 x509_new = crypto.load_certificate(crypto.FILETYPE_PEM, src)
                 if x509 and cert:
                     if x509.get_subject().CN == x509_new.get_subject().CN:
-                        os.write(dest, cert)
+                        os.write(dest, cert.encode('utf8'))
                     else:
                         print("Can not change username from {0} to {1}...".format(x509.get_subject().CN,
                                                                                   x509_new.get_subject().CN))

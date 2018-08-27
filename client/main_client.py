@@ -17,12 +17,12 @@ import os
 from PyQt5 import QtGui, QtCore, QtWidgets
 from locale import getdefaultlocale
 from client.transport import UTransport
-import asyncio
 from multiprocessing import Pool
 import _thread
 
 
 ADMIN_PIN = ''
+
 
 class LogInGroup(QtWidgets.QDialog):
     def closeEvent(self, evnt):

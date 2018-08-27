@@ -54,8 +54,8 @@ chown $username:$username /home/$username/private/web.key
 chmod 0640 /home/$username/certs/web.pem
 chown $username:uuser /home/$username/certs/web.pem
 cat /home/$username/certs/web.pem /home/$username/private/web.key >>  /home/$username/p12/web.pem
-chmod 0640 /home/$username/p12/web.p12
-chown $username:$username /home/$username/p12/web.p12
+chmod 0640 /home/$username/p12/web.pem
+chown $username:$username /home/$username/p12/web.pem
 #Generate master admin
 openssl genrsa -out /home/$username/private/$username.key 4096 1>&2 2>/dev/null
 openssl req -new -key /home/$username/private/$username.key -out /home/$username/reqs/$username.req -subj "/C=RU/O=$username/CN=$username/emailAddress=$email"

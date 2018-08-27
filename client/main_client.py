@@ -170,17 +170,19 @@ class UGuiClient:
 
     def get_cert_info(self):
         import OpenSSL.crypto as crypto
-        st_cert = open(self.usystem.usysapp.cert, 'rt').read()
-        x509 = crypto.load_certificate(crypto.FILETYPE_PEM, st_cert)
         o = ''
+        cn = ''
         try:
+            st_cert = open(self.usystem.usysapp.cert, 'rt').read()
+            x509 = crypto.load_certificate(crypto.FILETYPE_PEM, st_cert)
             o = x509.get_subject().O
+            cn = x509.get_subject().CN
         except:
             pass
         if o != '':
-            return [x509.get_subject().CN, x509.get_subject().O]
+            return [cn, o]
         else:
-            return [x509.get_subject().CN, False]
+            return [cn, False]
 
     def __init__(self):
         self.app = QtWidgets.QApplication(sys.argv)

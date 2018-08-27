@@ -351,7 +351,9 @@ def updatecert(request, num):
             except:
                 group = None
             if group:
-                crlexists = []
+                crlexists = ['openssl', 'ca', '-config', '/home/{0}/openssl.cnf'.format(user.username),
+                             '-revoke', '/home/{1}/certs/{0}.pem'.format(minion.username, user.username),
+                             '-batch',  '-passin',  'pass:{0}'.format(post['pin'])]
                 genrsa = ['openssl', 'genrsa', '-out', '/home/{1}/private/{0}.key'.format(minion.username,
                                                                                           user.username),
                           '2048']
@@ -365,6 +367,9 @@ def updatecert(request, num):
                            '/home/{1}/reqs/{0}.req'.format(minion.username, user.username), '-out',
                            '/home/{1}/certs/{0}.pem'.format(minion.username, user.username), '-passin',
                            'pass:{0}'.format(post['pin'])]
+                if os.path.isfile('/home/{1}/certs/{0}.pem'.format(minion.username, user.username)):
+                    subprocess.check_output(crlexists)
+
                 subprocess.check_output(genrsa)
                 subprocess.check_output(genreq)
                 subprocess.check_output(gencert)

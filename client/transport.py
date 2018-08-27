@@ -22,6 +22,8 @@ class UTransport:
             self.plarform = 'lin'
         else:
             self.plarform = 'mac'
+        self.cacert = cacert
+        self.cert = cert
         self.adminpin = False
         self.goout = False
         self.usystem_context = usystem_context
@@ -47,11 +49,14 @@ class UTransport:
         else:
             self.remote_port = self.usysapp.transport_port
         if usystem_context:
-            cert = self.usysapp.cert
+            self.cert = self.usysapp.cert
         if usystem_context:
-            cacert = self.usysapp.cacert
-        self.sslcontext = ssl.create_default_context(cafile=cacert)
-        self.sslcontext.load_cert_chain(cert)
+            self.cacert = self.usysapp.cacert
+        self.sslcontext = ssl.create_default_context(cafile=self.cacert)
+        try:
+            self.sslcontext.load_cert_chain(self.cert)
+        except:
+            pass
         self.ping_task = asyncio.Task(self.send_ping())
         self.ping_loop = asyncio.get_event_loop()
 
@@ -76,7 +81,9 @@ class UTransport:
                     if self.goout:
                         json_dict.update({'goout': self.goout})
                         self.goout = False
-                    async with session.post('https://{0}:{1}/'.format(self.remote_ip, self.remote_port),
+                    async with session.post('https://{0}:{1}/'.format(self.remote_ip,
+                                                                      self.remote_port if os.path.isfile(self.cert) else
+                                                                      self.remote_port + 1),
                                             json=json_dict, timeout=5) as response:
                         if response.status == 200:
                             self._parse_task_response(await response.json())
@@ -103,12 +110,24 @@ class UTransport:
                 self.usysapp.run_tun(int(response['vnc'][1]), int(response['vnc'][0]))
             elif self.usystem_context and 'certfile' in response.keys():
                 error = self.usysapp.update_certs(cert=response['certfile'][1])
-                if error:
+                if error and response['certfile'][0] > 0:
                     self.task.append([response['certfile'][0], 5])
+                else:
+                    self.sslcontext = ssl.create_default_context(cafile=self.cacert)
+                    try:
+                        self.sslcontext.load_cert_chain(self.cert)
+                    except:
+                        pass
             elif self.usystem_context and 'cacertfile' in response.keys():
                 error = self.usysapp.update_certs(cacert=response['cacertfile'][1])
-                if error:
+                if error and response['certfile'][0] > 0:
                     self.task.append([response['cacertfile'][0], 5])
+                else:
+                    self.sslcontext = ssl.create_default_context(cafile=self.cacert)
+                    try:
+                        self.sslcontext.load_cert_chain(self.cert)
+                    except:
+                        pass
         elif self.policy == 1:
             pass
 

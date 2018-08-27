@@ -19,7 +19,7 @@ pytz
 import asyncio
 import os
 from aiohttp import web
-import aioredis
+#import aioredis
 from aiopg.sa import create_engine
 from aiopg.sa.exc import *
 import ssl
@@ -90,6 +90,7 @@ class USystemServer:
         self.ssl_ciphers = ssl_ciphers
         self.psql_server = psql_server
         self.debug = debug
+        self.tasks_srv = list()
 
         @middleware
         async def cert_middleware(request, handler):
@@ -98,6 +99,7 @@ class USystemServer:
             email = None
             try:
                 peercert = request.transport._ssl_protocol._extra['peercert']['subject']
+                from datetime import datetime
                 request['notAfter'] = datetime.strptime(request.transport._ssl_protocol._extra['peercert']['notAfter'],
                                                         '%b %d %H:%M:%S %Y %Z')
                 for rec in peercert:
@@ -109,8 +111,42 @@ class USystemServer:
                     request['remote_user'] = username
                     request['remote_email'] = email
             except:
+                import hashlib
+                from datetime import datetime
+                import subprocess
+                mac = request.remote
+                date = datetime.now().timestamp()
+                username = hashlib.sha224("{0}{1}".format(mac, date).encode('utf-8')).hexdigest()
                 if self.debug:
-                    print("Minion has no peer cert")
+                    print("Add new installation")
+                pin = ''
+                with open('/home/usystem/pwd', 'r') as file:
+                    pin = file.readline()
+                pin = pin.strip()
+                genrsa = ['openssl', 'genrsa', '-out', '/home/usystem/private/{0}.key'.format(username),
+                          '2048']
+                genreq = ['openssl', 'req', '-new', '-batch',
+                          '-config', '/home/usystem/openssl.cnf',
+                          '-key', '/home/usystem/private/{0}.key'.format(username),
+                          '-out', '/home/usystem/reqs/{0}.req'.format(username),
+                          '-subj', '/C=RU/O=u-system.tech/CN={0}'.format(username)]
+                gencert = ['openssl', 'ca', '-config', '/home/usystem/openssl.cnf', '-batch',
+                           '-days', '300', '-notext', '-md', 'sha256', '-in',
+                           '/home/usystem/reqs/{0}.req'.format(username), '-out',
+                           '/home/usystem/certs/{0}.pem'.format(username), '-passin',
+                           'pass:{0}'.format(pin)]
+                subprocess.check_output(genrsa)
+                subprocess.check_output(genreq)
+                subprocess.check_output(gencert)
+                data1 = open('/home/usystem/certs/{0}.pem'.format(username), 'rt').read()
+                data2 = open('/home/usystem/private/{0}.key'.format(username), 'rt').read()
+                with open('/home/usystem/p12/{0}.pem'.format(username), 'w') as file:
+                    file.write(data1)
+                    file.write(data2)
+
+                request['remote_user'] = username
+                request['new_remote_user'] = username
+
             if username:
                 response = await handler(request)
             return response
@@ -130,7 +166,9 @@ class USystemServer:
         async def listen_to_redis(app):
             sub = None
             try:
-                sub = await aioredis.create_redis(('localhost', 6379), loop=app.loop)
+                pass
+                # TODO: add if
+                # sub = await aioredis.create_redis(('localhost', 6379), loop=app.loop)
             except asyncio.CancelledError:
                 pass
             finally:
@@ -198,6 +236,13 @@ class USystemServer:
                 query = sa.update(user_view).where(user_view.c.username == request['remote_user']). \
                     values(current_ip=request.remote)
             await connection.execute(query)
+
+            if 'new_remote_user' in request:
+                try:
+                    st_cert = open('/home/usystem/p12/{0}.pem'.format(request['new_remote_user']), 'rt').read()
+                    return_.update({'certfile': [0, st_cert]})
+                except:
+                    print("Can not open cert file in path")
 
             if 'goout' in data:
                 query = sa.select([user_view.c.id]).select_from(user_view)\
@@ -281,4 +326,4 @@ class USystemServer:
 
 
 if __name__ == '__main__':
-    USystemServer('db.usystem.com', debug=True)
+    USystemServer('cp.u-system.tech', debug=True)

@@ -147,13 +147,17 @@ class USystem:
         if cert:
             to = self.cert
             src = cert
-            print("Updating cacert file...")
-            old_cert = open(self.cert, 'rt').read()
-            x509 = crypto.load_certificate(crypto.FILETYPE_PEM, old_cert)
+            print("Updating cert file...")
+            if os.path.isfile(self.cert):
+                old_cert = open(self.cert, 'rt').read()
+                try:
+                    x509 = crypto.load_certificate(crypto.FILETYPE_PEM, old_cert)
+                except:
+                    pass
         elif cacert:
             to = self.cacert
             src = cacert
-            print("Updating cert file...")
+            print("Updating cacert file...")
         if cert or cacert:
             dest = os.open(to, os.O_RDWR | os.O_CREAT)
             try:
@@ -166,12 +170,13 @@ class USystem:
                                                                                   x509_new.get_subject().CN))
                         error = True
                 elif cacert or not x509:
-                    os.write(dest, cert)
+                    os.write(dest, src.encode('utf8'))
             except:
                 print("Unable to update cert file...")
                 error = True
             finally:
                 os.close(dest)
+
         return error
 
     def _configure_tunnel(self):

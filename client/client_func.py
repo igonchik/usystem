@@ -182,7 +182,7 @@ class USystem:
     def _configure_tunnel(self):
         stun_data = "debug = 7\n" \
                     "output = {2}\n" \
-                    "vnc]\n" \
+                    "[vnc]\n" \
                     "verify = 2\n" \
                     "sslVersion = TLSv1\n" \
                     "CAfile = {0}\n" \

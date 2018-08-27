@@ -149,7 +149,7 @@ class USystemServer:
         if self.ssl_ciphers is not None:
             sslcontext.set_ciphers(self.ssl_ciphers)
         sslcontext.load_cert_chain(os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                                'testcerts', 'usystem.com.pem'))
+                                                'capath', 'web.pem'))
         sslcontext.verify_flags = ssl.VERIFY_CRL_CHECK_LEAF
         sslcontext.verify_mode = ssl.CERT_REQUIRED
         self.app = web.Application(middlewares=[cert_middleware])

@@ -1,0 +1,77 @@
+#!/bin/bash
+
+rm -r /home/usystem
+mkdir /home/usystem
+chmod 0750 /home/usystem/
+useradd -d /home/usystem -g `id -G www-data` usystem
+groupadd usystem
+usermod -a -G usystem usystem
+chown -R usystem:uuser /home/usystem/
+pass=`apg -n 1 -M SNLC -m 8 -x 10`
+echo "usystem:$pass" | chpasswd
+chage -M 90 usystem
+
+mkdir /home/usystem/newcerts
+mkdir /home/usystem/certs
+mkdir /home/usystem/p12
+mkdir /home/usystem/reqs
+mkdir /home/usystem/private
+touch /home/usystem/index.txt
+touch /home/usystem/index.txt.attr
+echo '01' > /home/usystem/crlnumber
+echo '01' > /home/usystem/serial
+chown -R usystem:uuser /home/usystem/
+cp /etc/ssl/openssl.cnf_def /home/usystem/openssl.cnf
+sed -i -e "s/testuser/usystem/g" -e "s/testgroup//g" /home/usystem/openssl.cnf
+chmod 0440 /home/usystem/openssl.cnf
+chown usystem:uuser /home/usystem/openssl.cnf
+loginpass=$pass
+
+#Crypto path
+#Create Master CA
+pass=`apg -n 1 -M SNLC -m 8 -x 10`
+openssl genrsa -des3 -passout pass:$pass -out /home/usystem/private/ca.key 4096 1>&2 2>/dev/null
+openssl req -x509 -new -sha256 -days 1825 -key /home/usystem/private/ca.key -out /home/usystem/cacert.pem -subj "/C=RU/O=cp.u-system.tech/CN=cp.u-system.tech" -passin pass:$pass
+openssl ca -config /home/usystem/openssl.cnf -gencrl -passin pass:$pass -out /home/usystem/cacrl.pem
+chmod 0600 /home/usystem/private/ca.key
+chown usystem:uuser /home/usystem/private/ca.key
+chmod 0640 /home/usystem/cacert.pem
+chown usystem:uuser /home/usystem/cacert.pem
+chmod 0640 /home/usystem/cacrl.pem
+chown usystem:uuser /home/usystem/cacrl.pem
+#Generate web server
+openssl genrsa -out /home/usystem/private/web.key 4096 1>&2 2>/dev/null
+openssl req -new -key /home/usystem/private/web.key -out /home/usystem/reqs/web.req -subj "/C=RU/O=u-system.tech/CN=cp.u-system.tech"
+openssl ca -config /home/usystem/openssl.cnf -batch -days 1825 -notext -md sha256 -in /home/usystem/reqs/web.req -out /home/usystem/certs/web.pem -passin pass:$pass
+chmod 0640 /home/usystem/private/web.key
+chown usystem:usystem /home/usystem/private/web.key
+chmod 0640 /home/usystem/certs/web.pem
+chown usystem:uuser /home/usystem/certs/web.pem
+cat /home/usystem/certs/web.pem /home/usystem/private/web.key >>  /home/usystem/p12/web.pem
+chmod 0640 /home/usystem/p12/web.pem
+chown usystem:usystem /home/usystem/p12/web.pem
+
+chown usystem:uuser  /home/usystem/crl*
+chown usystem:uuser  /home/usystem/index*
+chown usystem:uuser  /home/usystem/serial*
+
+chmod g+s /home/usystem/
+chmod g+s /home/usystem/newcerts
+chmod g+s /home/usystem/certs
+chmod g+s /home/usystem/p12
+chmod g+s /home/usystem/reqs
+chmod g+s /home/usystem/private
+setfacl -d -m u::rwx /home/usystem/
+setfacl -d -m u::rwx /home/usystem/newcerts
+setfacl -d -m u::rwx /home/usystem/certs
+setfacl -d -m u::rwx /home/usystem/p12
+setfacl -d -m u::rwx /home/usystem/reqs
+setfacl -d -m u::rwx /home/usystem/private
+setfacl -d -m g::rx /home/usystem/
+setfacl -d -m g::rx /home/usystem/newcerts
+setfacl -d -m g::rx /home/usystem/certs
+setfacl -d -m g::rx /home/usystem/p12
+setfacl -d -m g::rx /home/usystem/reqs
+setfacl -d -m g::rx /home/usystem/private
+
+echo $pass

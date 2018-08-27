@@ -351,6 +351,7 @@ def updatecert(request, num):
             except:
                 group = None
             if group:
+                crlexists = []
                 genrsa = ['openssl', 'genrsa', '-out', '/home/{1}/private/{0}.key'.format(minion.username,
                                                                                           user.username),
                           '2048']

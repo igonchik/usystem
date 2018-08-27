@@ -326,7 +326,7 @@ class USystem:
             rcvnc = subprocess.Popen([self.vnc_server, '-run'])
         else:
             rcvnc = subprocess.Popen([self.vnc_server])
-        if rc and rc.pid and rcvnc and rcvnc.pid:
+        if rc and rcvnc:
             keyfile = os.path.join(self.app_dir, 'stun_rsa.key')
             self.stopFlag = False
             _thread.start_new_thread(tunnel, ('stun', rport, [self.remote_ip, self.remote_sshport], self.local_port,

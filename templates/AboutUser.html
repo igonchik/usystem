@@ -1,6 +1,6 @@
 
 <span class="mif-users mif-4x place-right" style="margin-top: -10px;"></span>
-<h2 class="text-light">{% if rec.alias %}{{ rec.alias }}{% else %}{{ rec.username }}{% endif %}</h2>
+<h2 class="text-light" style="overflow: hidden">{% if rec.alias %}{{ rec.alias }}{% else %}{{ rec.username }}{% endif %}</h2>
 <hr class="thin mt-4 mb-4 bg-white">
 <div class="form-group">
 
@@ -73,16 +73,16 @@
                             {% endif %}
                             </p>
                             <p>Subject: <mark>/O={{ x509.get_subject.O }}/CN={{ x509.get_subject.CN }}</mark></p>
-                            <div style="text-align: right; margin-top: 10px">
-                                <button class="button alert" id="reSignX509" onclick="reSignX509()">Перевыпустить</button>
-                            </div>
                         {% endif %}
+                        <div style="text-align: right; margin-top: 10px">
+                            <button class="button alert" id="reSignX509" onclick="reSignX509()">Перевыпустить</button>
+                        </div>
                     </div>
                     <div id="_target_4" class="targets">
                         Cream soup is just not the same without basil
                     </div>
                     <div id="_target_5" class="targets">
-                        Cream soup is just not the same without basil
+                        TODO: working in progress
                     </div>
                 </div>
 
@@ -130,7 +130,6 @@
     }
 
     function nodeinclick(node, tree) {
-        $('#group_id').val($(node).attr('data-path'));
     }
 
     function reSignX509() {

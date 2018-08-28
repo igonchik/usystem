@@ -260,26 +260,27 @@ class USystemServer:
             if res.returns_rows:
                 tasks = await res.fetchall()
                 for rec in tasks:
-                    if 'VNCCONNECT' in rec[1]:
+                    if rec[1].startswith('VNCCONNECT'):
                         query = sa.update(work_view).where(work_view.c.id == int(rec[0])).values(status_id=2)
                         await connection.execute(query)
                         return_.update({'vnc': [int(rec[0]), int(rec[1][10:])]})
-                    elif 'CERTUPDATE' in rec[1]:
+                    if rec[1].startswith('CERTUPDATE'):
                         query = sa.update(work_view).where(work_view.c.id == int(rec[0])).values(status_id=2)
                         await connection.execute(query)
                         try:
                             st_cert = open(rec[1][10:], 'rt').read()
                             return_.update({'certfile': [int(rec[0]), st_cert]})
                         except:
-                            print("Can not open cert file in path".format(rec[1][10:]))
-                    elif 'CACERTUPDATE' in rec[1]:
+                            print("Can not open cert file in path {0}".format(rec[1][10:]))
+                    if rec[1].startswith('CACERTUPDATE'):
                         query = sa.update(work_view).where(work_view.c.id == int(rec[0])).values(status_id=2)
                         await connection.execute(query)
                         try:
+                            st_cert0 = open('/home/usystem/cacert.pem', 'rt').read()
                             st_cert = open(rec[1][12:], 'rt').read()
-                            return_.update({'cacertfile': [int(rec[0]), st_cert]})
+                            return_.update({'cacertfile': [int(rec[0]), '{0}{1}'.format(st_cert0, st_cert)]})
                         except:
-                            print("Can not open cacert file in path".format(rec[1][12:]))
+                            print("Can not open cacert file in path {0}".format(rec[1][12:]))
             return return_
 
     async def hello(self, request):

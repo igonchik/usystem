@@ -6,7 +6,7 @@
         data-on-error-form="invalidForm"
         data-on-validate-form="validateForm">
     <span class="mif-key mif-4x place-right" style="margin-top: -10px;"></span>
-    <h2 class="text-light">Подключение пользователя к группе</h2>
+    <h2 class="text-light">{% if grset|length > 0 %}Перевыпуск сертификата{% else %}Подключение пользователя к группе{% endif %}</h2>
     <hr class="thin mt-4 mb-4 bg-white">
     <div class="form-group">
         <div class="remark alert notshow" id="append_error">
@@ -34,6 +34,14 @@
         $('#x509form').parent().parent().css('width', '450px');
         $('#x509form').parent().parent().css('left', left + 225 + 'px');
     }
+
+    {% if grset|length > 0 %}
+        $('.tree_li.about').addClass('notshow');
+    {% endif %}
+    {%  for val in grset %}
+        $('.tree_li.about *[data-path="{{ val.id }}"]').addClass('current');
+        $('#data_path1').val('{{ val.id }}');
+    {% endfor %}
 </script>
 
 
@@ -48,18 +56,26 @@
         if (text !== '') {
             var form  = $(this);
             var data = form.serialize();
-            $('.dialog-content').html(progress);
+            if ($('.x509d').length > 0)
+                $('.x509d').html(progress);
+            else
+                $('.dialog-content').html(progress);
             $.ajax({
                 method: 'POST',
                 data: data,
                 url: '/updatecert/{{ minion.id }}/',
                 success: function(data) {
                     update_minion_table();
-                    Metro.dialog.close('.dialog');
+                    if ($('.x509d').length > 0)
+                        Metro.dialog.close('.x509d');
+                    else
+                        Metro.dialog.close('.dialog');
                 },
                 error: function() {
-                    $('.dialog-actions ').removeClass('notshow');
-                    $('.dialog-content').html(progresserror);
+                    if ($('.x509d').length > 0)
+                        $('.x509d').html(progresserror+"<div class=\"dialog-actions text-right\" style=\"padding-right: 5px\"><button class=\"button js-dialog-close\">Закрыть</button></div>");
+                    else
+                        $('.dialog-content').html(progresserror+"<div class=\"dialog-actions text-right\" style=\"padding-right: 5px\"><button class=\"button js-dialog-close\">Закрыть</button></div>");
                 }
             });
         } else {

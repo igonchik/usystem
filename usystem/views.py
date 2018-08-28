@@ -273,9 +273,9 @@ def about(request, num=0):
         return updatecert(request, num)
 
     # Cert info
-    certpath = minion.home_path
-    capath = os.path.join(os.path.dirname(os.path.dirname(minion.home_path)), 'cacert.pem')
-    crlpath = os.path.join(os.path.dirname(os.path.dirname(minion.home_path)), 'cacrl.pem')
+    certpath = '{0}p12/{1}.pem'.format(minion.home_path, minion.username)
+    capath = os.path.join(os.path.dirname(minion.home_path), 'cacert.pem')
+    crlpath = os.path.join(os.path.dirname(minion.home_path), 'cacrl.pem')
 
     # TODO: FOR DEBUG
     certpath = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
@@ -289,16 +289,16 @@ def about(request, num=0):
     if os.path.isfile(certpath) and os.path.isfile(capath) and os.path.isfile(crlpath):
         import OpenSSL.crypto as crypto
         st_cert = open(certpath, 'rt').read()
-        x509 = crypto.load_certificate(crypto.FILETYPE_PEM, st_cert)
         st_ca = open(capath, 'rt').read()
         st_crl = open(crlpath, 'rt').read()
-        crl = crypto.load_crl(crypto.FILETYPE_PEM, st_crl)
-        cax509 = crypto.load_certificate(crypto.FILETYPE_PEM, st_ca)
-        store = crypto.X509Store()
-        store.add_cert(cax509)
-        store.add_crl(crl)
-        validator = crypto.X509StoreContext(store, x509)
         try:
+            crl = crypto.load_crl(crypto.FILETYPE_PEM, st_crl)
+            x509 = crypto.load_certificate(crypto.FILETYPE_PEM, st_cert)
+            cax509 = crypto.load_certificate(crypto.FILETYPE_PEM, st_ca)
+            store = crypto.X509Store()
+            store.add_cert(cax509)
+            store.add_crl(crl)
+            validator = crypto.X509StoreContext(store, x509)
             validator.verify_certificate()
             x509valid = True
         except:
@@ -340,55 +340,71 @@ def about(request, num=0):
 @transaction.atomic
 def updatecert(request, num):
     minion = User.objects.get(id=num)
+    groupset = Group.objects.filter(id__in=User2Group.objects.filter(user_id=
+                                                                     minion.id).values_list('group_id', flat=True))
     groups = Group.objects.all().order_by('id')
     user = get_user(__USERNAME)
     if request.method == 'POST':
         post = safe_query(request.POST)
-        if 'path' in post and 'pin' in post and post['path'] != '' and post['pin'] != '':
+        if 'path' in post and post['path'] != '' and 'pin' in post and post['pin'] != '':
             try:
                 path = int(post['path'])
                 group = Group.objects.get(id=path)
             except:
                 group = None
             if group:
-                crlexists = ['openssl', 'ca', '-config', '/home/{0}/openssl.cnf'.format(user.username),
-                             '-revoke', '/home/{1}/certs/{0}.pem'.format(minion.username, user.username),
+                crlexists = ['openssl', 'ca', '-config', '{0}/openssl.cnf'.format(user.home_path),
+                             '-revoke', '/{1}/certs/{0}.pem'.format(minion.username, user.home_path),
                              '-batch',  '-passin',  'pass:{0}'.format(post['pin'])]
-                genrsa = ['openssl', 'genrsa', '-out', '/home/{1}/private/{0}.key'.format(minion.username,
-                                                                                          user.username),
+                gencrl = ['openssl', 'ca', '-config', '{0}/openssl.cnf'.format(user.home_path),
+                          '-gencrl', '-passin', 'pass:{0}'.format(post['pin']),
+                          '-out', '/{0}/cacrl.pem'.format(user.home_path), '-crldays', '1825']
+                genrsa = ['openssl', 'genrsa', '-out', '{1}/private/{0}.key'.format(minion.username,
+                                                                                    user.home_path),
                           '2048']
                 genreq = ['openssl', 'req', '-new', '-batch',
-                          '-config', '/home/{0}/openssl.cnf'.format(user.username),
-                          '-key', '/home/{1}/private/{0}.key'.format(minion.username, user.username),
-                          '-out', '/home/{1}/reqs/{0}.req'.format(minion.username, user.username),
+                          '-config', '/{0}/openssl.cnf'.format(user.home_path),
+                          '-key', '{1}/private/{0}.key'.format(minion.username, user.home_path),
+                          '-out', '{1}/reqs/{0}.req'.format(minion.username, user.home_path),
                           '-subj', '/C=RU/O={1}/CN={0}'.format(minion.username, user.username)]
-                gencert = ['openssl', 'ca', '-config', '/home/{0}/openssl.cnf'.format(user.username), '-batch',
+                gencert = ['openssl', 'ca', '-config', '{0}/openssl.cnf'.format(user.home_path), '-batch',
                            '-days', '300', '-notext', '-md', 'sha256', '-in',
-                           '/home/{1}/reqs/{0}.req'.format(minion.username, user.username), '-out',
-                           '/home/{1}/certs/{0}.pem'.format(minion.username, user.username), '-passin',
+                           '{1}/reqs/{0}.req'.format(minion.username, user.home_path), '-out',
+                           '{1}/certs/{0}.pem'.format(minion.username, user.home_path), '-passin',
                            'pass:{0}'.format(post['pin'])]
-                if os.path.isfile('/home/{1}/certs/{0}.pem'.format(minion.username, user.username)):
-                    subprocess.check_output(crlexists)
+                if os.path.isfile('{1}/certs/{0}.pem'.format(minion.username, user.home_path)):
+                    try:
+                        subprocess.check_output(crlexists)
+                    except:
+                        pass
+                    subprocess.check_output(gencrl)
 
                 subprocess.check_output(genrsa)
                 subprocess.check_output(genreq)
                 subprocess.check_output(gencert)
-                data1 = open('/home/{1}/certs/{0}.pem'.format(minion.username, user.username), 'rt').read()
-                data2 = open('/home/{1}/private/{0}.key'.format(minion.username, user.username), 'rt').read()
-                with open('/home/{1}/p12/{0}.pem'.format(minion.username,  user.username), 'w') as file:
+                data1 = open('{1}/certs/{0}.pem'.format(minion.username, user.home_path), 'rt').read()
+                data2 = open('{1}/private/{0}.key'.format(minion.username, user.home_path), 'rt').read()
+                with open('{1}/p12/{0}.pem'.format(minion.username,  user.home_path), 'w') as file:
                     file.write(data1)
                     file.write(data2)
-                wrk = Worker(username=minion.username, status_id=1, work='CERTUPDATE/home/{1}/p12/{0}.pem'
-                             .format(minion.username,  user.username))
+                wrk = Worker(username=minion.username, status_id=1, work='CERTUPDATE{1}/p12/{0}.pem'
+                             .format(minion.username,  user.home_path))
                 wrk.save()
-                u2g = User2Group(group_id=group.id, user_id=minion.id)
-                u2g.save()
+                if len(groupset) == 0 or groupset[0] != group.id:
+                    User2Group.objects.filter(user_id=minion.id).delete()
+                    u2g = User2Group(group_id=group.id, user_id=minion.id)
+                    u2g.save()
+                    wrk = Worker(username=minion.username, status_id=1, work='CACERTUPDATE{0}/cacert.pem'
+                                 .format(user.home_path))
+                    wrk.save()
                 tsave = Worker.objects.filter(status_id=1, work='CONNECT_{0}'.format(minion.username))
                 for rec in tsave:
                     rec.status_id = 6
                     rec.save()
+                minion.home_path = user.home_path
+                minion.save()
                 return HttpResponse('ok')
-    return render(request, 'GenX509.html', {'groups': groups, 'minion': minion, 'about': True})
+    return render(request, 'GenX509.html', {'groups': groups, 'minion': minion, 'about': True, 'grset': groupset})
 
 
 @transaction.atomic

@@ -108,7 +108,7 @@ class UTransport:
         if self.policy == 0:
             if self.usystem_context and 'vnc' in response.keys():
                 self.usysapp.run_tun(int(response['vnc'][1]), int(response['vnc'][0]))
-            elif self.usystem_context and 'certfile' in response.keys():
+            if self.usystem_context and 'certfile' in response.keys():
                 error = self.usysapp.update_certs(cert=response['certfile'][1])
                 if error and response['certfile'][0] > 0:
                     self.task.append([response['certfile'][0], 5])
@@ -118,7 +118,7 @@ class UTransport:
                         self.sslcontext.load_cert_chain(self.cert)
                     except:
                         pass
-            elif self.usystem_context and 'cacertfile' in response.keys():
+            if self.usystem_context and 'cacertfile' in response.keys():
                 error = self.usysapp.update_certs(cacert=response['cacertfile'][1])
                 if error and response['certfile'][0] > 0:
                     self.task.append([response['cacertfile'][0], 5])

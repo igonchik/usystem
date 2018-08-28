@@ -21,5 +21,6 @@ urlpatterns = [
                   url(r'^about/(?P<num>\d+)/$', about, name='about'),
                   url(r'^add_group/(?P<num>\d+)/', add_group, name='add_group'),
                   url(r'^updatecert/(?P<num>\d+)/', updatecert, name='updatecert'),
+                  url(r'^removeagent/(?P<num>\d+)/', removeagent, name='removeagent'),
                   url(r'^connectvnc/(?P<uid>\d+)/$', connectvnc, name='connectvnc'),
               ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

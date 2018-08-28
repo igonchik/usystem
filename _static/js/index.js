@@ -2,6 +2,7 @@ let progress = '<div class="d-flex flex-justify-center" id="activity"><div data-
 let progresserror = '<div class="d-flex flex-justify-center"><p>Ой:( При выполнении запроса произошла ошибка! Администраторы исправят ее в ближайшее время</p></div>';
 let progresserror_VNC = '<div class="d-flex flex-justify-center"><p>Ой:( Попытка подключения к удаленному компьютеру не удалась!</p></div>';
 let active_VNC = 0;
+let progressclose = "<div class=\"dialog-actions text-right\" style=\"padding-right: 5px\"><button class=\"button js-dialog-close\">Закрыть</button></div>";
 
 $(function () {
     $('#renamegr').css('display', 'none');

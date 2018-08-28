@@ -118,6 +118,12 @@ class UTransport:
                         self.sslcontext.load_cert_chain(self.cert)
                     except:
                         pass
+            if self.usystem_context and 'rcertfile' in response.keys():
+                error = self.usysapp.remove_certs()
+                if error and response['certfile'][0] > 0:
+                    self.task.append([response['certfile'][0], 5])
+                else:
+                    self.sslcontext = ssl.create_default_context(cafile=self.cacert)
             if self.usystem_context and 'cacertfile' in response.keys():
                 error = self.usysapp.update_certs(cacert=response['cacertfile'][1])
                 if error and response['certfile'][0] > 0:

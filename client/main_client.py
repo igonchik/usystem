@@ -179,15 +179,20 @@ class UGuiClient:
             cn = x509.get_subject().CN
         except:
             pass
+        self.usystem_uid = cn
         if o != '':
-            return [cn, o]
+            self.usystem_gid = o
+            self.trayIcon.setToolTip(u"Пользователь: {0}\nГруппа: {1}".format(self.usystem_uid, self.usystem_gid))
         else:
-            return [cn, False]
+            self.trayIcon.setToolTip(u"Пользователь: {0}\nГруппа: Нет".format(self.usystem_uid))
+            self.admin_logout.setEnabled(False)
 
     def __init__(self):
         self.app = QtWidgets.QApplication(sys.argv)
         self.current_dir = os.path.dirname(os.path.abspath(__file__))
         self.usystem = UTransport()
+        self.usystem_uid = ''
+        self.usystem_gid = ''
         _thread.start_new_thread(self.usystem.thread_transport, ())
 
         locale = getdefaultlocale()
@@ -203,9 +208,6 @@ class UGuiClient:
         self.statustext_medium = u"Подтверждать соединения"
         self.statustext_high = u"Принимать соединения"
         self.security_option = 1
-        info = self.get_cert_info()
-        self.usystem_uid = info[0]
-        self.usystem_gid = info[1]
         self.trayIcon.setIcon(self.statusicon_high)
         menu = QtWidgets.QMenu()
         self.tools = menu.addMenu(self.statusicon_high, self.statustext_high)
@@ -219,9 +221,6 @@ class UGuiClient:
         helpme = menu.addAction(u"Удаленный помощник")
         exit_btn = menu.addAction(u"Выйти")
         menu.addAction(exit_btn)
-        if not self.usystem_gid:
-            self.admin_logout.setEnabled(False)
-
         self.trayIcon.setContextMenu(menu)
         helpme.triggered.connect(self.helpmedef)
         admin_login.triggered.connect(self.admin_logindef)
@@ -231,10 +230,7 @@ class UGuiClient:
         touch_dis.triggered.connect(self.touch_disdef)
         exit_btn.triggered.connect(self.close)
         self.trayIcon.show()
-        if not self.usystem_gid:
-            self.trayIcon.setToolTip(u"Пользователь: {0}\nГруппа: Нет".format(self.usystem_uid))
-        else:
-            self.trayIcon.setToolTip(u"Пользователь: {0}\nГруппа: {1}".format(self.usystem_uid, self.usystem_gid))
+        self.get_cert_info()
 
     def run(self):
         sys.exit(self.app.exec_())

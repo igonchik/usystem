@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import division
-from django.shortcuts import render, render_to_response, redirect
-from usystem.models import models
-from django.http import HttpResponseRedirect, HttpResponse
+from django.shortcuts import render
+from django.http import HttpResponse, HttpResponseServerError
 from django.template import RequestContext
 from django.db.models import Q
 from operator import and_
@@ -19,7 +18,6 @@ from copy import deepcopy
 from django.db.models import Count
 from django.db import connection
 import os
-import getpass
 import socket
 from usystem.models import *
 import time
@@ -335,6 +333,35 @@ def about(request, num=0):
     return render(request, 'AboutUser.html', {'rec': minion, 'groups': groups, 'u2g': u2g, 'port_vnc': port_vnc,
                                               'author_vnc': author_vnc, 'about': True, 'x509': x509,
                                               'x509valid': x509valid})
+
+
+@transaction.atomic
+def removeagent(request, num):
+    minion = User.objects.get(id=num)
+    user = get_user(__USERNAME)
+    if request.method == 'POST':
+        post = safe_query(request.POST)
+        if 'pin' in post and post['pin'] != '':
+            crlexists = ['openssl', 'ca', '-config', '{0}/openssl.cnf'.format(user.home_path),
+                         '-revoke', '/{1}/certs/{0}.pem'.format(minion.username, user.home_path),
+                         '-batch', '-passin', 'pass:{0}'.format(post['pin'])]
+            gencrl = ['openssl', 'ca', '-config', '{0}/openssl.cnf'.format(user.home_path),
+                      '-gencrl', '-passin', 'pass:{0}'.format(post['pin']),
+                      '-out', '/{0}/cacrl.pem'.format(user.home_path), '-crldays', '1825']
+            if os.path.isfile('{1}/certs/{0}.pem'.format(minion.username, user.home_path)):
+                try:
+                    subprocess.check_output(crlexists)
+                except:
+                    pass
+                subprocess.check_output(gencrl)
+            wrk = Worker(username=minion.username, status_id=1, work='CACERTUPDATE/home/usystem/cacert.pem')
+            wrk.save()
+            wrk = Worker(username=minion.username, status_id=1, work='RCERTUPDATE')
+            wrk.save()
+            User2Group.objects.filter(user_id=minion.id).delete()
+            return HttpResponse('ok')
+        return HttpResponseServerError('PASS Phrase is incorrect')
+    return HttpResponseServerError('request method is not POST')
 
 
 @transaction.atomic

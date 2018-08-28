@@ -138,6 +138,14 @@ class USystem:
         # TODO find TightVNC conf
         pass
 
+    def remove_certs(self):
+        error = False
+        try:
+            os.remove(self.cert)
+        except:
+            error = True
+        return error
+
     def update_certs(self, cert=None, cacert=None):
         import OpenSSL.crypto as crypto
         to = None

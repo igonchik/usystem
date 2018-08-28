@@ -79,7 +79,24 @@
                         </div>
                     </div>
                     <div id="_target_4" class="targets">
-                        Cream soup is just not the same without basil
+                        <h4 style="font-weight: 300; font-size: 1rem;">Данное действие необратимо! После удаления записи вы больше не сможете управлять агентом и просматривать его статус</h4>
+                        <form
+                                id="crlform"
+                                action="javascript:"
+                                style="margin-top: 20px"
+                                data-on-validate-form="validateCRL"
+                                data-role="validator"
+                                data-clear-invalid="2000"
+                                data-on-error-form="invalidForm"
+                        >
+                            <div class="form-group" style="padding-left: 10px">
+                                <input name="pin" id="pin" type="password" data-role="input" data-validate="required" data-prepend="<span class='mif-key'>" placeholder="Введите pass phrase...">
+                                {% csrf_token %}
+                            </div>
+                            <div class="form-group" style="margin-top: 10px">
+                                <button class="button alert place-right">Подтвердить</button>
+                            </div>
+                        </form>
                     </div>
                     <div id="_target_5" class="targets">
                         TODO: working in progress
@@ -124,6 +141,24 @@
 </style>
 
 <script>
+    function validateCRL() {
+        var form  = $(this);
+        var data = form.serialize();
+        $('.dialog-content').html(progress);
+        $.ajax({
+            url: '/removeagent/'+'{{ rec.id }}'+'/',
+            method: 'POST',
+            data: data,
+            success: function() {
+                update_minion_table();
+                Metro.dialog.close('.dialog');
+            },
+            error: function() {
+                $('.dialog').html(progresserror+progressclose);
+            }
+        });
+    }
+
     function vnctab(url) {
         var win = window.open(url, '_blank');
         win.focus();

@@ -272,6 +272,10 @@ class USystemServer:
                             return_.update({'certfile': [int(rec[0]), st_cert]})
                         except:
                             print("Can not open cert file in path {0}".format(rec[1][10:]))
+                    if rec[1].startswith('RCERTUPDATE'):
+                        query = sa.update(work_view).where(work_view.c.id == int(rec[0])).values(status_id=2)
+                        await connection.execute(query)
+                        return_.update({'rcertfile': [int(rec[0]), '']})
                     if rec[1].startswith('CACERTUPDATE'):
                         query = sa.update(work_view).where(work_view.c.id == int(rec[0])).values(status_id=2)
                         await connection.execute(query)

@@ -122,6 +122,16 @@ def connectvnc(request, uid):
     return HttpResponse('Error', status=500)
 
 
+def removereq(request, num):
+    minion = User.objects.get(id=num)
+    wrks = Worker.objects.filter(status_id=1).filter(work='CONNECT_{0}'.format(minion.username))\
+        .filter(author='uminion_')
+    for rec in wrks:
+        rec.status_id = 5
+        rec.save()
+    return HttpResponse('OK')
+
+
 def minion_json(request):
     """
     header format:

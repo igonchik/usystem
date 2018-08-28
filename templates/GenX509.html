@@ -24,6 +24,9 @@
     <div class="form-group mt-10">
         <a href="#" class="button place-right js-dialog-close">Отмена</a>
         <button class="button alert">Подтвердить</button>
+        {% if grset|length == 0 %}
+            <button class="button remove ml-5" id="removeagent">Удалить запрос</button>
+        {% endif %}
     </div>
 </form>
 
@@ -46,6 +49,24 @@
 
 
 <script>
+    document.getElementById('removeagent').addEventListener(
+        'click', removeReq, false
+    );
+    function removeReq(evt) {
+        evt.preventDefault();
+        $('.dialog-content').html(progress);
+        $.ajax({
+            url: '/removereq/'+'{{ minion.id }}'+'/',
+            success: function() {
+                update_minion_table();
+                Metro.dialog.close('.dialog');
+            },
+            error: function() {
+                $('.dialog-content').html(progresserror+progressclose);
+            }
+        });
+    }
+
     function nodeinclick(node, tree) {
         $('#data_path1').val($(node).attr('data-path'));
     }

@@ -2,28 +2,14 @@
 from __future__ import division
 from django.shortcuts import render
 from django.http import HttpResponse, HttpResponseServerError
-from django.template import RequestContext
-from django.db.models import Q
-from operator import and_
-from functools import wraps
-from django.views.decorators.cache import patch_cache_control
 from django.db import transaction
-from usystem_master import config
-from usystem.forms import *
-import base64
-from django.db.models import Max, F
 import subprocess
-from django.core.mail import send_mail
-from copy import deepcopy
-from django.db.models import Count
-from django.db import connection
 import os
 import socket
 from usystem.models import *
 import time
 from django.http import JsonResponse
 from usystem.common_funcs import safe_query
-
 
 __USERNAME = 'utest'
 
@@ -76,11 +62,8 @@ def connectvnc(request, uid):
             websockify_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
             certpath = os.path.join(user.home_path, 'p12', 'web.pem')
             cafile = os.path.join(user.home_path, 'cacert.pem')
-            # TODO: FOR DEBUG
-            certpath = os.path.join(websockify_dir, 'ctaskserver', 'testcerts', 'usystem.com.pem')
-            cafile = os.path.join(websockify_dir, 'ctaskserver', 'capath', 'cacert.pem')
             conf_path = '{1}stunnel{0}_vnc.conf'.format(pwd.getpwnam(user.username).pw_uid,
-                                                                          user.home_path)
+                                                        user.home_path)
             stunnel_conf = "setuid={0}\nclient = yes\n" \
                            "pid={1}stunnel4{0}_vnc.pid\n" \
                            "[vnc]\n" \
@@ -91,8 +74,7 @@ def connectvnc(request, uid):
                            "cert = {1}p12/web.pem\n" \
                            "key = {1}p12/web.pem\n" \
                            "CAfile = {1}cacert.pem\n".format(pwd.getpwnam(user.username).pw_uid,
-                                                                    user.home_path,
-                                                                    port[1], port[0])
+                                                             user.home_path, port[1], port[0])
             with open(conf_path, 'w') as the_file:
                 the_file.write(stunnel_conf)
             stun = subprocess.Popen(['stunnel', conf_path], close_fds=True)
@@ -103,7 +85,7 @@ def connectvnc(request, uid):
                                         '--ssl-version', 'tlsv1_2',
                                         '--cert', certpath,
                                         '--ssl-only',
-                                        #'--timeout', '60',
+                                        # '--timeout', '60',
                                         '--cafile', cafile,
                                         '--auth-plugin', 'ClientCertCNAuth',
                                         '--auth-source', ' '.join(rec for rec in users)
@@ -124,7 +106,7 @@ def connectvnc(request, uid):
 
 def removereq(request, num):
     minion = User.objects.get(id=num)
-    wrks = Worker.objects.filter(status_id=1).filter(work='CONNECT_{0}'.format(minion.username))\
+    wrks = Worker.objects.filter(status_id=1).filter(work='CONNECT_{0}'.format(minion.username)) \
         .filter(author='uminion_')
     for rec in wrks:
         rec.status_id = 5
@@ -268,8 +250,8 @@ def add_group(request, num=0):
         else:
             return HttpResponse('Error', status=404)
     else:
-        return render(request, 'ModifyGroup.html', {'parent': parent}
-                                                        if num == 0 else {'rec': Group.objects.get(id=num)})
+        return render(request, 'ModifyGroup.html',
+                      {'parent': parent} if num == 0 else {'rec': Group.objects.get(id=num)})
 
 
 def about(request, num=0):
@@ -289,9 +271,9 @@ def about(request, num=0):
     certpath = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                             'client', 'testcerts', 'myvirtwin7.p12')
     capath = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                            'ctaskserver', 'capath', 'cacert.pem')
+                          'ctaskserver', 'capath', 'cacert.pem')
     crlpath = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                          'client', 'testcerts', 'cacrl.pem')
+                           'client', 'testcerts', 'cacrl.pem')
     x509 = None
     x509valid = False
     if os.path.isfile(certpath) and os.path.isfile(capath) and os.path.isfile(crlpath):
@@ -392,7 +374,7 @@ def updatecert(request, num):
             if group:
                 crlexists = ['openssl', 'ca', '-config', '{0}/openssl.cnf'.format(user.home_path),
                              '-revoke', '/{1}/certs/{0}.pem'.format(minion.username, user.home_path),
-                             '-batch',  '-passin',  'pass:{0}'.format(post['pin'])]
+                             '-batch', '-passin', 'pass:{0}'.format(post['pin'])]
                 gencrl = ['openssl', 'ca', '-config', '{0}/openssl.cnf'.format(user.home_path),
                           '-gencrl', '-passin', 'pass:{0}'.format(post['pin']),
                           '-out', '/{0}/cacrl.pem'.format(user.home_path), '-crldays', '1825']
@@ -421,11 +403,11 @@ def updatecert(request, num):
                 subprocess.check_output(gencert)
                 data1 = open('{1}/certs/{0}.pem'.format(minion.username, user.home_path), 'rt').read()
                 data2 = open('{1}/private/{0}.key'.format(minion.username, user.home_path), 'rt').read()
-                with open('{1}/p12/{0}.pem'.format(minion.username,  user.home_path), 'w') as file:
+                with open('{1}/p12/{0}.pem'.format(minion.username, user.home_path), 'w') as file:
                     file.write(data1)
                     file.write(data2)
                 wrk = Worker(username=minion.username, status_id=1, work='CERTUPDATE{1}/p12/{0}.pem'
-                             .format(minion.username,  user.home_path))
+                             .format(minion.username, user.home_path))
                 wrk.save()
                 if len(groupset) == 0 or groupset[0] != group.id:
                     User2Group.objects.filter(user_id=minion.id).delete()
@@ -450,20 +432,20 @@ def genadminpin(request):
     user = get_user(__USERNAME)
     from random import randint
     inbase = list(Worker.objects.filter(username='*', status_id=4, work__startswith='ADMPIN',
-                                        create_tstamp__gte=datetime.now()-timedelta(hours=1))
+                                        create_tstamp__gte=datetime.now() - timedelta(hours=1))
                   .values_list('work', flat=True))
-    PIN = '{0}{1}{2}{3}{4}{5}'.format(randint(0, 9), randint(0, 9), randint(0, 9), randint(0, 9),
+    pin = '{0}{1}{2}{3}{4}{5}'.format(randint(0, 9), randint(0, 9), randint(0, 9), randint(0, 9),
                                       randint(0, 9), randint(0, 9))
-    while 'ADMPIN{0}'.format(PIN) in inbase:
-        PIN = '{0}{1}{2}{3}{4}{5}'.format(randint(0, 9), randint(0, 9), randint(0, 9), randint(0, 9),
+    while 'ADMPIN{0}'.format(pin) in inbase:
+        pin = '{0}{1}{2}{3}{4}{5}'.format(randint(0, 9), randint(0, 9), randint(0, 9), randint(0, 9),
                                           randint(0, 9), randint(0, 9))
     oldpin = Worker.objects.filter(username='*', status_id=4, work__startswith='ADMPIN', author=user.username)
     for rec in oldpin:
         rec.status_id = 6
         rec.save()
-    wrk = Worker(username='*', status_id=4, work='ADMPIN{0}'.format(PIN))
+    wrk = Worker(username='*', status_id=4, work='ADMPIN{0}'.format(pin))
     wrk.save()
-    return render(request, 'AdminPin.html', {'PIN': PIN})
+    return render(request, 'AdminPin.html', {'PIN': pin})
 
 
 def get_user(username):

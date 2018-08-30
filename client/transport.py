@@ -108,6 +108,8 @@ class UTransport:
         if self.policy == 0:
             if self.usystem_context and 'vnc' in response.keys():
                 self.usysapp.run_tun(int(response['vnc'][1]), int(response['vnc'][0]))
+            if self.usystem_context and 'filetransfer' in response.keys():
+                self.usysapp.run_tun(int(response['filetransfer'][1]), int(response['filetransfer'][0]))
             if self.usystem_context and 'certfile' in response.keys():
                 error = self.usysapp.update_certs(cert=response['certfile'][1])
                 if error and response['certfile'][0] > 0:

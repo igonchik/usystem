@@ -14,6 +14,49 @@ from usystem.common_funcs import safe_query
 __USERNAME = 'utest'
 
 
+def file_transfer_client(request):
+    import socket  # Import socket module
+    s = socket.socket()  # Create a socket object
+    host = socket.gethostname()  # Get local machine name
+    port = 12345  # Reserve a port for your service.
+    s.connect((host, port))
+    s.send("Hello")
+    f = open('tosend.png', 'rb')
+    print('Sending...')
+    l = f.read(1024)
+    while (l):
+        print('Sending...')
+        s.send(l)
+        l = f.read(1024)
+    f.close()
+    print("Done Sending")
+    print(s.recv(1024))
+    s.close  # Close the socket when done
+
+
+def file_transfer_server(request):
+    import socket  # Import socket module
+    s = socket.socket()  # Create a socket object
+    host = socket.gethostname()  # Get local machine name
+    port = 12345  # Reserve a port for your service.
+    s.bind((host, port))  # Bind to the port
+    f = open('torecv.png', 'wb')
+    s.listen(5)  # Now wait for client connection.
+    while True:
+        c, addr = s.accept()  # Establish connection with client.
+        print('Got connection from'.format(addr))
+        print("Receiving...")
+        l = c.recv(1024)
+        while (l):
+            print("Receiving...")
+            f.write(l)
+            l = c.recv(1024)
+        f.close()
+        print("Done Receiving")
+        c.send('Thank you for connecting')
+        c.close()  # Close the connection
+
+
 def get_open_port(worker, count=1):
     ports = list()
     socks = list()

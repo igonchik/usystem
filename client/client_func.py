@@ -39,6 +39,7 @@ class USystem:
         return True
 
     def __init__(self):
+        self.file_port = 10101
         self.stopFlag = True
         self.remote_ip = None
         self.remote_sshport = None
@@ -85,6 +86,7 @@ class USystem:
             self.stunnel_server = None
             self.app_dir = None
             self.tunnel = None
+            self.rtunnel = None
             self.cacert = None
             self.cert = None
             self.app_error = False
@@ -197,10 +199,32 @@ class USystem:
                     "accept  = 127.0.0.1:{3}\n" \
                     "connect = 127.0.0.1:{4}\n" \
                     "key = {1}\n" \
-                    "cert = {1}\n"\
+                    "cert = {1}\n\n" \
+                    "[file]\n" \
+                    "verify = 2\n" \
+                    "sslVersion = TLSv1\n" \
+                    "CAfile = {0}\n" \
+                    "accept  = 127.0.0.1:{5}\n" \
+                    "connect = 127.0.0.1:{6}\n" \
+                    "key = {1}\n" \
+                    "cert = {1}\n" \
             .format(self.cacert, self.cert,
-                    os.path.join(self.stunnel_path, 'stun.log'), self.local_port, self.vnc_port)
+                    os.path.join(self.stunnel_path, 'stun.log'), self.local_port, self.vnc_port,
+                    str(int(self.local_port) + 1), self.file_port)
         self.tunnel = Stunnel(os.path.join(self.stunnel_path, 'stunnel.conf'), stun_data)
+
+    def _configure_reverse_tunnel(self):
+        stun_data = "client = yes\n" \
+                    "[file]\n" \
+                    "verify = 2\n" \
+                    "sslVersion = TLSv1\n" \
+                    "accept  = 127.0.0.1:{2}\n" \
+                    "connect = 127.0.0.1:{3}\n" \
+                    "cert = {1}\n" \
+                    "key = {1}\n" \
+                    "CAfile = {0}cacert.pem\n"\
+            .format(self.cacert, self.cert, self.vnc_port, self.local_port)
+        self.rtunnel = Stunnel(os.path.join(self.stunnel_path, 'stunnel.conf'), stun_data)
 
     @staticmethod
     def find_procs_by_name(name):
@@ -328,8 +352,8 @@ class USystem:
 
         self.stopFlag = True
         self._kill_tunnel()
-        self._kill_vnc()
         rc = self.tunnel.start(self.stunnel_server)
+        self._kill_vnc()
         if platform.system() == 'Windows':
             rcvnc = subprocess.Popen([self.vnc_server, '-run'])
         else:

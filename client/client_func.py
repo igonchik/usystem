@@ -16,6 +16,7 @@ import _thread
 import psutil
 import configparser
 import sys
+from client.filetransfer import file_transfer_client
 
 
 class USystem:
@@ -33,6 +34,7 @@ class USystem:
                     self.cert = config['usystem']['cert_path']
                     self.policy = int(config['usystem']['policy'])
                     self.transport_port = int(config['usystem']['transport_port'])
+                    self.share_path = config['usystem']['share_path']
                 except:
                     print('USystem app is not configurated! exit...')
                     return False
@@ -52,6 +54,9 @@ class USystem:
         self.task_error = list()
         self.policy = 0
         self.vnc_connect = False
+        self.stunnel_p = None
+        self.stunnel_pr = None
+        self.share_path = ''
 
         self.current_dir = os.path.dirname(os.path.abspath(__file__))
         if platform.system() == 'Windows':
@@ -213,7 +218,7 @@ class USystem:
                     str(int(self.local_port) + 1), self.file_port)
         self.tunnel = Stunnel(os.path.join(self.stunnel_path, 'stunnel.conf'), stun_data)
 
-    def _configure_reverse_tunnel(self):
+    def _configure_reverse_tunnel(self, laport, lcport):
         stun_data = "client = yes\n" \
                     "[file]\n" \
                     "verify = 2\n" \
@@ -223,8 +228,8 @@ class USystem:
                     "cert = {1}\n" \
                     "key = {1}\n" \
                     "CAfile = {0}cacert.pem\n"\
-            .format(self.cacert, self.cert, self.vnc_port, self.local_port)
-        self.rtunnel = Stunnel(os.path.join(self.stunnel_path, 'stunnel.conf'), stun_data)
+            .format(self.cacert, self.cert, laport, lcport)
+        return Stunnel(os.path.join(self.stunnel_path, 'rev_stunnel.conf'), stun_data)
 
     @staticmethod
     def find_procs_by_name(name):
@@ -269,15 +274,13 @@ class USystem:
             subprocess.call(['pkill', 'uconnect'])
         sleep(0.5)
 
-    def run_tun(self, rport, work_id):
+    def run_tun(self, rport, work_id, lport):
         def handler(chan, host, port):
             sock = socket.socket()
             try:
                 sock.connect((host, port))
             except Exception as e:
                 self.task_error.append([work_id, 5])
-                self._kill_tunnel()
-                self._kill_vnc()
                 print("Forwarding request to %s:%d failed: %r" % (host, port, e))
                 return
 
@@ -313,8 +316,6 @@ class USystem:
                     handler(chan, remote_host, remote_port)
             except:
                 self.task_error.append([work_id, 6])
-                self._kill_tunnel()
-                self._kill_vnc()
                 sys.exit()
 
         def tunnel(username, listen_port, server, vnc_port, keyfile):
@@ -337,8 +338,6 @@ class USystem:
             except Exception as e:
                 print("*** Failed to connect to %s:%d: %r" % (server[0], server[1], e))
                 self.task_error.append([work_id, 5])
-                self._kill_tunnel()
-                self._kill_vnc()
                 sys.exit()
 
             print(
@@ -349,27 +348,95 @@ class USystem:
             reverse_forward_tunnel(
                 listen_port, remote[0], remote[1], client.get_transport()
             )
+        keyfile = os.path.join(self.app_dir, 'stun_rsa.key')
+        _thread.start_new_thread(tunnel, ('stun', rport, [self.remote_ip, self.remote_sshport], lport,
+                                          keyfile))
+        return 0
 
-        self.stopFlag = True
+    def restart_stunnel(self):
         self._kill_tunnel()
-        rc = self.tunnel.start(self.stunnel_server)
+        self.stunnel_p = self.tunnel.start(self.stunnel_server)
+
+    @staticmethod
+    def _get_open_port(count=1):
+        ports = list()
+        socks = list()
+        i = 0
+        while i < count:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.bind(("", 0))
+            s.listen(1)
+            ports.append(s.getsockname()[1])
+            socks.append(s)
+            i += 1
+        for s in socks:
+            s.close()
+        return ports
+
+    def run_vnc(self, rport, work_id):
+        self.stopFlag = True
         self._kill_vnc()
         if platform.system() == 'Windows':
             rcvnc = subprocess.Popen([self.vnc_server, '-run'])
         else:
             rcvnc = subprocess.Popen([self.vnc_server])
-        if rc and rcvnc:
-            keyfile = os.path.join(self.app_dir, 'stun_rsa.key')
+        if not self.stunnel_p:
+            self.restart_stunnel()
+        if rcvnc and self.stunnel_p:
             self.stopFlag = False
-            _thread.start_new_thread(tunnel, ('stun', rport, [self.remote_ip, self.remote_sshport], self.local_port,
-                                              keyfile))
+            self.run_tun(rport, work_id, self.local_port)
         else:
-            print("Unable to start TLS")
-            self._kill_tunnel()
+            print("Unable to start VNC")
             self._kill_vnc()
+            self.task_error.append([work_id, 5])
+
+    def run_outtransfer(self, rport, filename, work_id):
+        port = self._get_open_port(2)
+        rtunnel_class = self._configure_reverse_tunnel(port[0], port[1])
+        pid = rtunnel_class.start(self.stunnel_server)
+        if pid and os.path.isfile(filename):
+            self.run_tun(rport, work_id, port[1])
+            file_transfer_client(filename, '127.0.0.1', port[0])
+        else:
+            print("Unable to start fileouttransfer")
+            self.task_error.append([work_id, 5])
+
+    @staticmethod
+    def file_transfer_server(filename, port):
+        s = socket.socket()  # Create a socket object
+        try:
+            s.bind(('0.0.0.0', port))  # Bind to the port
+        except:
+            pass
+        f = open(filename, 'wb')
+        s.listen(1)  # Now wait for client connection.
+        sended = False
+        while not sended:
+            c, addr = s.accept()  # Establish connection with client.
+            print("Receiving...")
+            line = c.recv(1024)
+            while line:
+                f.write(line)
+                line = c.recv(1024)
+            f.close()
+            print("Done Receiving")
+            sended = True
+            c.close()  # Close the connection
+        s.close()
+
+    def run_intransfer(self, rport, filename, work_id):
+        if not self.stunnel_p:
+            self.restart_stunnel()
+        if self.stunnel_p:
+            self.stopFlag = False
+            self.run_tun(rport, work_id, self.local_port + 1)
+            _thread.start_new_thread(self.file_transfer_server, (os.path.join(self.share_path, filename),
+                                                                 self.file_port))
+        else:
+            print("Unable to start transfer")
             self.task_error.append([work_id, 5])
 
 
 if __name__ == '__main__':
     app = USystem()
-    app.run_tun(5930, 0)
+    app.run_tun(5930, 0, 5899)

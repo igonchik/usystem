@@ -5,6 +5,24 @@ import time
 import socket
 
 
+def file_transfer_client(filename, host, port):
+    s = socket.socket()  # Create a socket object
+    s.connect((host, port))
+    f = open(filename, 'rb')
+    print('Sending...')
+    line = f.read(1024)
+    while line:
+        print('Sending...')
+        s.send(line)
+        line = f.read(1024)
+    f.close()
+    print("Done Sending")
+    print(s.recv(1024))
+    s.shutdown(socket.SHUT_WR)  # Close the socket when done
+    print(s.recv(1024))
+    s.close()
+
+
 class UFileTransfer:
     @staticmethod
     def file_transfer_client(filename, host, port):

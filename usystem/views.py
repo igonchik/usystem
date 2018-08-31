@@ -14,49 +14,6 @@ from usystem.common_funcs import safe_query
 __USERNAME = 'utest'
 
 
-def file_transfer_client(request):
-    import socket  # Import socket module
-    s = socket.socket()  # Create a socket object
-    host = socket.gethostname()  # Get local machine name
-    port = 12345  # Reserve a port for your service.
-    s.connect((host, port))
-    s.send("Hello")
-    f = open('tosend.png', 'rb')
-    print('Sending...')
-    l = f.read(1024)
-    while (l):
-        print('Sending...')
-        s.send(l)
-        l = f.read(1024)
-    f.close()
-    print("Done Sending")
-    print(s.recv(1024))
-    s.close  # Close the socket when done
-
-
-def file_transfer_server(request):
-    import socket  # Import socket module
-    s = socket.socket()  # Create a socket object
-    host = socket.gethostname()  # Get local machine name
-    port = 12345  # Reserve a port for your service.
-    s.bind((host, port))  # Bind to the port
-    f = open('torecv.png', 'wb')
-    s.listen(5)  # Now wait for client connection.
-    while True:
-        c, addr = s.accept()  # Establish connection with client.
-        print('Got connection from'.format(addr))
-        print("Receiving...")
-        l = c.recv(1024)
-        while (l):
-            print("Receiving...")
-            f.write(l)
-            l = c.recv(1024)
-        f.close()
-        print("Done Receiving")
-        c.send('Thank you for connecting')
-        c.close()  # Close the connection
-
-
 def get_open_port(worker, count=1):
     ports = list()
     socks = list()
@@ -81,6 +38,83 @@ def get_open_port(worker, count=1):
     for s in socks:
         s.close()
     return ports
+
+
+def sendfile(request, uid):
+    def file_transfer_client(filename, host, port):
+        i_size = 0
+        m_size = os.path.getsize(filename)
+        s = socket.socket()  # Create a socket object
+        s.connect((host, port))
+        f = open(filename, 'rb')
+        print('Sending...')
+        line = f.read(1024)
+        while line:
+            print('Sending... {0} from {1}'.format(i_size*1024, m_size))
+            s.send(line)
+            line = f.read(1024)
+            i_size += 1
+        f.close()
+        print("Done Sending")
+        s.shutdown(socket.SHUT_WR)  # Close the socket when done
+        s.close()
+        return 0
+
+    import pwd
+    filename = '/home/testfilein'
+    user = get_user(__USERNAME)
+    minion = User.objects.prefetch_related('user2group_set').get(id=uid)
+    new_work = Worker(status_id=1, username=minion.username)
+    new_work.save()
+    port = get_open_port(new_work.id, 3)
+    new_work.work = 'FILEIN{0}:{1}'.format(port[0], filename)
+    new_work.save()
+    time_index = 0
+    while time_index < 30:
+        time.sleep(1)
+        time_index += 1
+        if Worker.objects.get(id=new_work.id).status_id == 4:
+            conf_path = '{1}stunnel{0}_filein.conf'.format(pwd.getpwnam(user.username).pw_uid,
+                                                           user.home_path)
+            stunnel_conf = "setuid={0}\nclient = yes\n" \
+                           "pid={1}stunnel4{0}_transfer.pid\n" \
+                           "[file]\n" \
+                           "verify = 2\n" \
+                           "sslVersion = TLSv1\n" \
+                           "accept  = 127.0.0.1:{2}\n" \
+                           "connect = 127.0.0.1:{3}\n" \
+                           "cert = {1}p12/web.pem\n" \
+                           "key = {1}p12/web.pem\n" \
+                           "CAfile = {1}cacert.pem\n".format(pwd.getpwnam(user.username).pw_uid,
+                                                             user.home_path, port[1], port[0])
+            with open(conf_path, 'w') as the_file:
+                the_file.write(stunnel_conf)
+            stun = subprocess.Popen(['stunnel', conf_path])
+            if not stun.pid:
+                new_work.status_id = 5
+                new_work.save()
+                PortMap.objects.filter(work_id=new_work.id).delete()
+                return HttpResponse('Error', status=500)
+            try:
+                time.sleep(1)
+                res = file_transfer_client(filename, '127.0.0.1', port[1])
+                # TODO: kill proc
+                #kill_proc = ["kill", "`netstat -luntp | grep 'sshd: stun' | grep '127.0.0.1:1091' | awk '{print $7}'"
+                #                     "| cut -d '/' -f1`"]
+                #subprocess.call(kill_proc)
+                if res == 0:
+                    return HttpResponse('OK')
+                else:
+                    return HttpResponse('Error', status=500)
+            except:
+                new_work.status_id = 5
+                new_work.save()
+                PortMap.objects.filter(work_id=new_work.id).delete()
+                return HttpResponse('Error transfering the file', status=500)
+    new_work.status_id = 5
+    new_work.save()
+    PortMap.objects.filter(work_id=new_work.id).delete()
+    return HttpResponse('Error', status=500)
 
 
 def connectvnc(request, uid):
@@ -134,6 +168,9 @@ def connectvnc(request, uid):
                                         '--auth-source', ' '.join(rec for rec in users)
                                         ], close_fds=True)
             if not websock.pid or not stun.pid:
+                new_work.status_id = 5
+                new_work.save()
+                PortMap.objects.filter(work_id=new_work.id).delete()
                 return HttpResponse('Error', status=500)
             host = request.META['HTTP_HOST']
             if ':' in request.META['HTTP_HOST']:

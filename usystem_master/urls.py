@@ -24,4 +24,5 @@ urlpatterns = [
                   url(r'^removeagent/(?P<num>\d+)/', removeagent, name='removeagent'),
                   url(r'^removereq/(?P<num>\d+)/', removereq, name='removereq'),
                   url(r'^connectvnc/(?P<uid>\d+)/$', connectvnc, name='connectvnc'),
+                  url(r'^sendfile/(?P<uid>\d+)/$', sendfile, name='sendfile'),
               ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

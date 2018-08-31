@@ -174,6 +174,12 @@ class USystemServer:
     async def _write_to_redis(self, request):
         return 0
 
+    @staticmethod
+    def path_leaf(path):
+        import ntpath
+        head, tail = ntpath.split(path)
+        return tail or ntpath.basename(head)
+
     async def _write_to_postgres_hello(self, request, data):
         async with self.app['pg_engine'].acquire() as connection:
             query = (sa.select([pubuser.c.username]).select_from(pubuser)
@@ -260,6 +266,16 @@ class USystemServer:
             if res.returns_rows:
                 tasks = await res.fetchall()
                 for rec in tasks:
+                    if rec[1].startswith('FILEOUT'):
+                        query = sa.update(work_view).where(work_view.c.id == int(rec[0])).values(status_id=2)
+                        await connection.execute(query)
+                        return_.update({'fileouttransfer': [int(rec[0]), int(rec[1][7:].split(':', 1)[0]),
+                                                            rec[1][7:].split(':', 1)[1]]})
+                    if rec[1].startswith('FILEIN'):
+                        query = sa.update(work_view).where(work_view.c.id == int(rec[0])).values(status_id=2)
+                        await connection.execute(query)
+                        return_.update({'fileintransfer': [int(rec[0]), int(rec[1][6:].split(':', 1)[0]),
+                                                           self.path_leaf(rec[1][6:].split(':', 1)[1])]})
                     if rec[1].startswith('VNCCONNECT'):
                         query = sa.update(work_view).where(work_view.c.id == int(rec[0])).values(status_id=2)
                         await connection.execute(query)

@@ -120,7 +120,7 @@ function actionsVNCMinion(elem) {
         },
         actions: [
             {
-                caption: "Отмена",
+                caption: "Закрыть",
                 cls: "js-dialog-close",
             }
         ]

@@ -17,6 +17,7 @@ echo "insert into "
 email=`echo "select email from usystem_user where username like '$username';" | su postgres -- -c  "psql -d usystem --no-align --tuples-only"`
 
 if [ -n "$email" ]; then
+mkdir /home/$username/share
 mkdir /home/$username/newcerts
 mkdir /home/$username/certs
 mkdir /home/$username/p12
@@ -71,9 +72,11 @@ chown $username:uuser /home/$username/p12/$username.p12
 chown $username:uuser  /home/$username/crl*
 chown $username:uuser  /home/$username/index*
 chown $username:uuser  /home/$username/serial*
+chown $username:uuser  /home/$username/share
 
 chmod g+s /home/$username/
 chmod g+s /home/$username/newcerts
+chmod g+s /home/$username/share
 chmod g+s /home/$username/certs
 chmod g+s /home/$username/p12
 chmod g+s /home/$username/reqs
@@ -84,8 +87,10 @@ setfacl -d -m u::rwx /home/$username/certs
 setfacl -d -m u::rwx /home/$username/p12
 setfacl -d -m u::rwx /home/$username/reqs
 setfacl -d -m u::rwx /home/$username/private
+setfacl -d -m u::rwx /home/$username/share
 setfacl -d -m g::rx /home/$username/
 setfacl -d -m g::rx /home/$username/newcerts
+setfacl -d -m g::rx /home/$username/share
 setfacl -d -m g::rx /home/$username/certs
 setfacl -d -m g::rx /home/$username/p12
 setfacl -d -m g::rx /home/$username/reqs

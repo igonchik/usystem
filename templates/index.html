@@ -56,20 +56,7 @@
                     {% endcomment %}
                     {% include "GroupSelectorTree.html" %}
                 </li>
-                <li class="menu-title">Products</li>
-                <li><a href="#"><span class="mif-settings-ethernet icon"></span> UConnect</a></li>
-                <li><a href="#"><span class="mif-display icon"></span> UMonitor</a></li>
-                <li><a href="#"><span class="mif-tree icon"></span> UDiscovery</a></li>
-                <li><a href="#"><span class="mif-magic-wand icon"></span> UAutomate</a></li>
-                <li><a href="#"><span class="mif-tools icon"></span> UDesk</a></li>
-                <li class="menu-title">Support</li>
-                <li>
-                    <a href="#"><span class="mif-organization icon"></span>Community</a>
-                    <ul class="v-menu" data-role="dropdown">
-                        <li><a href="#">UConnect</a></li>
-                        <li><a href="#">UMonitor</a></li>
-                    </ul>
-                </li>
+                {% include "Menu.html" %}
             </ul>
         </td>
         <td>

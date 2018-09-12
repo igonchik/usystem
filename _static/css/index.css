@@ -26,6 +26,10 @@
     top: 10% !important;
 }
 
+.showTop5 {
+    top: 5% !important;
+}
+
 #minion-table tbody tr {
     cursor: pointer;
 }

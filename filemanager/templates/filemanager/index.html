@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+{% load staticfiles %}
+{% load l10n %}
+{% load i18n %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta property="og:title" content="Калькулятор раскроя" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% trans "SiteName"%}</title>
+    <link href="{% static "favicon.ico" %}" rel="icon" type="image/icon">
+    <link href="{% static "css/metro-all.min.css" %}" type="text/css" rel="stylesheet">
+    <link href="{% static "css/index.css" %}" type="text/css" rel="stylesheet">
+    <script type="text/javascript" src="{% static "filemanager/js/jquery/jquery.min.js" %}"></script>
+    <script type="text/javascript" src="{% static "filemanager/js/jquery/jquery-migrate.min.js" %}"></script>
+    <script type="text/javascript" src="{% static "filemanager/js/jquery/zclip/jquery.zclip.min.js" %}"></script>
+    <script type="text/javascript">
+        var dir_structure = {{dir_structure|safe}};
+        var messages = {{messages|safe}};
+        var dir_id = {{current_id}};
+        var ckeditor_baseurl = '{{ ckeditor_baseurl }}';
+        var CKEditorFuncNum = {% if CKEditorFuncNum %}{{CKEditorFuncNum}}{% else %}null{%endif%};
+        var static_url = '/static/';
+        {% if public_url_base %}
+            var public_url_base = '{{public_url_base}}';
+        {% endif %}
+        var clipboard = { 'empty':true, 'path': 'full path will come here' ,
+            'mode': 'cut or copy', 'type': 'file or dir'}
+        var space_consumed = {{space_consumed}};
+        var max_space = {{max_space}}*1024;
+    </script>
+    <script type="text/javascript" src="{% static "filemanager/js/script6.js" %}"></script>
+    <script src="{% static "js/metro.min.js" %}" type="text/javascript"></script>
+    <script src="{% static "js/index.js" %}" type="text/javascript"></script>
+</head>
+<body class="lang-{{ LANGUAGE_CODE }}">
+<table class="main">
+    <tr><td colspan="2">
+        USystem
+        {% comment %}
+        <ul class="h-menu">
+            <li><a href="#">Home</a></li>
+            <li>
+                <a href="#" class="dropdown-toggle">Products</a>
+                <ul class="d-menu" data-role="dropdown">
+                    <li>
+                        <a href="#" class="dropdown-toggle">Windows</a>
+                        <ul class="d-menu" data-role="dropdown">
+                            <li><a href="#">Windows 10</a></li>
+                            <li><a href="#">Windows Server</a></li>
+                            <li class="divider"></li>
+                            <li><a href="#">MS-DOS</a></li>
+                        </ul>
+                    </li>
+                    <li><a href="#">Skype</a></li>
+                    <li class="divider"></li>
+                    <li><a href="#">Office</a></li>
+                </ul>
+            </li>
+            <li><a href="#">Support</a></li>
+            <li><a href="#">Cart</a></li>
+        </ul>
+        {% endcomment %}
+    </td></tr>
+    <tr>
+        <td class="v-menu-td">
+            <ul class="v-menu">
+                {% include "Menu.html" %}
+            </ul>
+        </td>
+        <td>
+
+            <link rel="stylesheet" type="text/css" href="{% static "filemanager/css/style.css" %}"/>
+
+
+            <div id="main" oncontextmenu='return false;'>
+                <div id="left">
+                </div>
+                <div id="right">
+                    <div id="control">
+                        <form method="POST" id="form" enctype="multipart/form-data" style="">{% csrf_token %}
+                            <input type="file" id="ufile" name="ufile" style="position:fixed;top:-100px" multiple>
+                            <input type="text" id="action" name="action" style="display:none;">
+                            <input type="text" id="path" name="path" value="" style="display:none;">
+                            <input type="text" id="name" name="name" value="" style="display:none;">
+                            <input type="text" id="current_path" name="current_path" value="" style="display:none;">
+                            <input type="text" id="file_or_dir" name="file_or_dir" value="" style="display:none;">
+                            <input type="submit" id="submit" name="submit" value="Submit" style="display:none;">
+                            <label class="control" id="upload-label" for="ufile">
+                                <img src="{% static "filemanager/images/upload.png" %}" style="width:16px;height:16px" width="100%" height="100%"/>
+                                <span>Upload Files</span>
+                            </label>
+                        </form>
+                        <div id="message">
+                        </div>
+                    </div>
+                    <div id="content" onmousedown='rightclick_handle(event,dir_id,"dom");'>
+                    </div>
+                </div>
+            </div>
+            <div id="dom-menu" class="menu" style="display:none">
+                <div id="add-dir" class="menu-option" onclick="do_action('add','dom')">
+                    <img src="{% static "filemanager/images/add_folder.png" %}" style="width:16px;height:16px" width="100%" height="100%"/><span>Create Folder</span>
+                </div><hr>
+                <div id="paste-dir" class="menu-option" onclick="do_action('paste','dom')">
+                    <img src="{% static "filemanager/images/paste.png" %}" style="width:16px;height:16px" width="100%" height="100%"/><span>Paste</span>
+                </div><hr>
+                <div id="download-dir" class="menu-option" onclick="do_action('download','dom')">
+                    <img src="{% static "filemanager/images/download.png" %}" style="width:16px;height:16px" width="100%" height="100%"/><span>Download</span>
+                </div>
+            </div>
+            <div id="dir-menu" class="menu" style="display:none">
+                <div id="add-dir" class="menu-option" onclick="do_action('add','dir')">
+                    <img src="{% static "filemanager/images/add_folder.png" %}" style="width:16px;height:16px" width="100%" height="100%"/><span>Create Sub-Folder</span>
+                </div><hr>
+                <div id="cut-dir" class="menu-option" onclick="do_action('cut','dir')">
+                    <img src="{% static "filemanager/images/cut.png" %}" style="width:16px;height:16px" width="100%" height="100%"/><span>Cut</span>
+                </div><hr>
+                <div id="copy-dir" class="menu-option" onclick="do_action('copy','dir')">
+                    <img src="{% static "filemanager/images/copy.png" %}" style="width:16px;height:16px" width="100%" height="100%"/><span>Copy</span>
+                </div><hr>
+                <div id="paste-dir" class="menu-option" onclick="do_action('paste','dir')">
+                    <img src="{% static "filemanager/images/paste.png" %}" style="width:16px;height:16px" width="100%" height="100%"/><span>Paste</span>
+                </div><hr>
+                <div id="rename-dir" class="menu-option" onclick="do_action('rename','dir')">
+                    <img src="{% static "filemanager/images/rename.png" %}" style="width:16px;height:16px" width="100%" height="100%"/><span>Rename</span>
+                </div><hr>
+                <div id="download-dir" class="menu-option" onclick="do_action('download','dir')">
+                    <img src="{% static "filemanager/images/download.png" %}" style="width:16px;height:16px" width="100%" height="100%"/><span>Download</span>
+                </div><hr>
+                <div id="delete-dir" class="menu-option" onclick="do_action('delete','dir')">
+                    <img src="{% static "filemanager/images/delete.png" %}" style="width:16px;height:16px" width="100%" height="100%"/><span>Delete</span>
+                </div>
+            </div>
+            <div id="file-menu" class="menu" style="display:none">
+                <div id="send-file" class="menu-option" onclick="do_action('sendto','file')">
+                    <img src="{% static "filemanager/images/upload.png" %}" style="width:16px;height:16px" width="100%" height="100%"/><span>Send to...</span>
+                </div><hr>
+                <div id="rename-file" class="menu-option" onclick="do_action('rename','file')">
+                    <img src="{% static "filemanager/images/rename.png" %}" style="width:16px;height:16px" width="100%" height="100%"/><span>Rename</span>
+                </div><hr>
+                <div id="unzip-file" class="menu-option unzip-menu" onclick="do_action('unzip','file')" style="display:none">
+                    <img src="{% static "filemanager/images/unzip.png" %}" style="width:16px;height:16px" width="100%" height="100%"/><span>Unzip</span>
+                </div><hr class="unzip-menu" style="display:none">
+                <div id="cut-file" class="menu-option" onclick="do_action('cut','file')">
+                    <img src="{% static "filemanager/images/cut.png" %}" style="width:16px;height:16px" width="100%" height="100%"/><span>Cut</span>
+                </div><hr>
+                <div id="copy-file" class="menu-option" onclick="do_action('copy','file')">
+                    <img src="{% static "filemanager/images/copy.png" %}" style="width:16px;height:16px" width="100%" height="100%"/><span>Copy</span>
+                </div><hr>
+                <div id="download-file" class="menu-option" onclick="do_action('download','file')">
+                    <img src="{% static "filemanager/images/download.png" %}" style="width:16px;height:16px" width="100%" height="100%"/><span>Download</span>
+                </div><hr>
+                <div id="delete-file" class="menu-option" onclick="do_action('delete','file')">
+                    <img src="{% static "filemanager/images/delete.png" %}" style="width:16px;height:16px" width="100%" height="100%"/><span>Delete</span>
+                </div>
+                {% if public_url_base %}
+                    <hr>
+                    <div id="copy-public-link-file" class="menu-option">
+                        <img src="{% static "filemanager/images/copy_public_link.png" %}" style="width:16px;height:16px" width="100%" height="100%"/><span>Copy public link</span>
+                    </div>
+                {% endif %}
+            </div> <div id="popup">
+            <div class="div1"><img src="{% static "filemanager/images/close.png" %}" onclick="$('#popup').hide();"/>
+                <div id="heading"></div></div>
+            <div class="div2"><input id="input" type="text"></div>
+        </div>
+            <div id="status-bar">
+                {% if show_space %}
+                    <div class="progress">
+                        <div class="bar" id="space_quota">
+                        </div>
+                    </div>
+                    <span id="space_quota_string">
+    </span>
+                {% endif %}
+                <span id="status">
+     </span>
+            </div>
+
+
+
+        </td>
+    </tr>
+</table>
+</body>
+</html>

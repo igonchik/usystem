@@ -10,8 +10,18 @@ from usystem.models import *
 import time
 from django.http import JsonResponse
 from usystem.common_funcs import safe_query
+from filemanager import FileManager
+import platform
+
 
 __USERNAME = 'utest'
+
+
+def file_view(request, path):
+    user = get_user(__USERNAME)
+    #fm = FileManager(os.path.join(user.home_path, 'share'))
+    fm = FileManager('C:\\Users\\d.goncharov.ACC\\servershare')
+    return fm.render(request, path)
 
 
 def get_open_port(worker, count=1):
@@ -40,7 +50,15 @@ def get_open_port(worker, count=1):
     return ports
 
 
-def sendfile(request, uid):
+def checktable(request):
+    user = get_user(__USERNAME)
+    groups = Group.objects.all().order_by('id')
+    response = {'user': user, 'groups': groups}
+    return render(request, 'CheckTable.html', response)
+
+
+def sendfile(request):
+    import urllib.parse
     def file_transfer_client(filename, host, port):
         i_size = 0
         m_size = os.path.getsize(filename)
@@ -60,13 +78,33 @@ def sendfile(request, uid):
         s.close()
         return 0
 
-    import pwd
-    filename = '/home/testfilein'
+    if request.method == 'GET' and 'path' in request.GET and 'filename' in request.GET:
+        query = safe_query(request.GET)
+        uids = query['path'].split(',')
+        filename = urllib.parse.unquote(query['filename'])
+    else:
+        return HttpResponse('Error1', status=500)
+
+    if platform.system() != 'Windows':
+        import pwd
+    uid = int(uids[0])
     user = get_user(__USERNAME)
     minion = User.objects.prefetch_related('user2group_set').get(id=uid)
     new_work = Worker(status_id=1, username=minion.username)
     new_work.save()
     port = get_open_port(new_work.id, 3)
+
+    # For Debug
+    if platform.system() == 'Windows':
+        hpath = 'C:\\Users\\d.goncharov.ACC\\'
+    else:
+        hpath = user.home_path
+
+    if platform.system() == 'Windows':
+        filename = filename.replace('/', '\\')
+
+    filename = os.path.normpath(hpath + 'share' + filename)
+
     new_work.work = 'FILEIN{0}:{1}'.format(port[0], filename)
     new_work.save()
     time_index = 0
@@ -74,8 +112,12 @@ def sendfile(request, uid):
         time.sleep(1)
         time_index += 1
         if Worker.objects.get(id=new_work.id).status_id == 4:
-            conf_path = '{1}stunnel{0}_filein.conf'.format(pwd.getpwnam(user.username).pw_uid,
-                                                           user.home_path)
+            if platform.system() != 'Windows':
+                coonfpw_uid = pwd.getpwnam(user.username).pw_uid
+            else:
+                coonfpw_uid = 'debug'
+
+            conf_path = '{1}stunnel{0}_filein.conf'.format(coonfpw_uid, hpath)
             stunnel_conf = "setuid={0}\nclient = yes\n" \
                            "pid={1}stunnel4{0}_transfer.pid\n" \
                            "[file]\n" \
@@ -85,8 +127,7 @@ def sendfile(request, uid):
                            "connect = 127.0.0.1:{3}\n" \
                            "cert = {1}p12/web.pem\n" \
                            "key = {1}p12/web.pem\n" \
-                           "CAfile = {1}cacert.pem\n".format(pwd.getpwnam(user.username).pw_uid,
-                                                             user.home_path, port[1], port[0])
+                           "CAfile = {1}cacert.pem\n".format(coonfpw_uid, hpath, port[1], port[0])
             with open(conf_path, 'w') as the_file:
                 the_file.write(stunnel_conf)
             stun = subprocess.Popen(['stunnel', conf_path])
@@ -118,7 +159,8 @@ def sendfile(request, uid):
 
 
 def connectvnc(request, uid):
-    import pwd
+    if platform.system() != 'Windows':
+        import pwd
     user = get_user(__USERNAME)
     minion = User.objects.prefetch_related('user2group_set').get(id=uid)
     new_work = Worker(status_id=1, username=minion.username)
@@ -194,7 +236,7 @@ def removereq(request, num):
     return HttpResponse('OK')
 
 
-def minion_json(request):
+def minion_json(request, num=0):
     """
     header format:
     {
@@ -216,6 +258,7 @@ def minion_json(request):
     },
     """
     user = get_user(__USERNAME)
+    num = int(num)
     groups = Group.objects.filter(user2group__user_id=user.id).values_list('id', flat=True).order_by('id')
     groups_id = list(groups)
     uusers = User.objects.filter(user2group__group__id__in=groups_id) \
@@ -233,6 +276,9 @@ def minion_json(request):
 
     response = dict()
     h = list()
+    if num == 1:
+        h.append({'name': 'name', 'title': '', 'sortable': False})
+
     h.append({'name': 'name', 'title': 'Name', 'sortable': True, 'sortDir': 'asc', 'format': 'string'})
     h.append({'name': 'group', 'title': 'Group', 'sortable': True, 'format': 'string'})
     h.append({'name': 'version', 'title': 'USYS version', 'sortable': True, 'format': 'string'})
@@ -252,18 +298,33 @@ def minion_json(request):
     data = list()
     for rec in uusers:
         if not rec.is_master:
-            data.append([
-                rec.username if not rec.alias else rec.alias,
-                ', '.join(group.group.alias for group in rec.user2group_set.all()),
-                rec.version,
-                rec.programm_set.filter(classname_id=1)[0].name if rec.programm_set.filter(classname_id=1).exists()
-                else '',
-                rec.register_tstamp.strftime("%d.%m.%Y"),
-                rec.lastactivity_tstamp.strftime("%d.%m.%Y %H:%M"),
-                rec.isactive(),
-                rec.id,
-                rec.user2group_set.all()[0].group.path
-            ])
+            if num == 1:
+                data.append([
+                    '1',
+                    rec.username if not rec.alias else rec.alias,
+                    ', '.join(group.group.alias for group in rec.user2group_set.all()),
+                    rec.version,
+                    rec.programm_set.filter(classname_id=1)[0].name if rec.programm_set.filter(classname_id=1).exists()
+                    else '',
+                    rec.register_tstamp.strftime("%d.%m.%Y"),
+                    rec.lastactivity_tstamp.strftime("%d.%m.%Y %H:%M"),
+                    rec.isactive(),
+                    rec.id,
+                    rec.user2group_set.all()[0].group.path
+                ])
+            else:
+                data.append([
+                    rec.username if not rec.alias else rec.alias,
+                    ', '.join(group.group.alias for group in rec.user2group_set.all()),
+                    rec.version,
+                    rec.programm_set.filter(classname_id=1)[0].name if rec.programm_set.filter(classname_id=1).exists()
+                    else '',
+                    rec.register_tstamp.strftime("%d.%m.%Y"),
+                    rec.lastactivity_tstamp.strftime("%d.%m.%Y %H:%M"),
+                    rec.isactive(),
+                    rec.id,
+                    rec.user2group_set.all()[0].group.path
+                ])
     for rec in trying_connect:
         if not rec.is_master:
             data.append([

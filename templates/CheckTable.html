@@ -1,0 +1,18 @@
+<div id="minion-table-container">
+    <table id="minion-table" class="table striped table-border mt-4"
+           data-role="table"
+           data-source="/control_json/1/"
+           data-show-all-pages="false"
+           data-pagination="true"
+           data-cls-rows-count="notshow"
+           data-cls-search="cell-search"
+           data-rows="25"
+           data-on-draw-row="onDrawRow1_"
+           data-on-data-loaded="onDraw_"
+           data-on-data-load="onBeforeDraw_"
+           data-pagination-wrapper=".my-pagination-wrapper"
+           data-table-info-title="Showed с $1 по $2 из $3"
+    >
+    </table>
+    <div class="d-flex flex-justify-center my-pagination-wrapper"></div>
+</div>

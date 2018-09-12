@@ -26,14 +26,6 @@
                                 <span data-role="hint" data-hint-text="Create VNC connection" class="mif-settings-ethernet icon fg-red mif-3x"
                                       style="cursor: pointer; margin-right: 5px" onclick="actionsVNCMinion({{ rec.id }});"></span>
                             {% endif %}
-
-                            {% if port_ftp %}
-                                <span data-role="hint" data-hint-text="File transfer connected from <b>{{ author_vnc.uname }}</b>" class="mif-upload icon fg-green mif-3x"
-                                      style="cursor: pointer; margin-right: 5px" onclick="alert(1)"></span>
-                            {% else %}
-                                <span data-role="hint" data-hint-text="Create File transfer connection" class="mif-upload icon fg-red mif-3x"
-                                      style="cursor: pointer; margin-right: 5px" onclick="alert(1)"></span>
-                            {% endif %}
                         </p>
                         <p>Last IP: <mark>{{ rec.current_ip }}</mark></p>
                         <p>Date creation: <mark>{{ rec.register_tstamp|date:"d.m.Y H:i" }}</mark></p>

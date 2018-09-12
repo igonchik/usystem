@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'usystem',
+    'filemanager',
 ]
 
 MIDDLEWARE = [
@@ -109,7 +110,7 @@ STATICFILES_FINDERS = (
     'django.contrib.staticfiles.finders.AppDirectoriesFinder',
 )
 
-MEDIA_ROOT = os.path.join(BASE_DIR, '_medialib')
+MEDIA_ROOT = os.path.join(BASE_DIR, 'medialib')
 MEDIA_URL = '/medialib/'
 STATIC_URL = '/static/'
 STATICFILES_DIRS = (

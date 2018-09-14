@@ -8,7 +8,10 @@ import platform
 import os
 from time import sleep
 import subprocess
-from client.pystunnel import Stunnel
+try:
+    from client.pystunnel import Stunnel
+except:
+    from pystunnel import Stunnel
 import socket
 import select
 import paramiko
@@ -16,14 +19,18 @@ import _thread
 import psutil
 import configparser
 import sys
-from client.filetransfer import file_transfer_client
+try:
+    from client.filetransfer import file_transfer_client
+except:
+    from filetransfer import file_transfer_client
 
 
 class USystem:
     def _read_config(self):
         config = configparser.ConfigParser()
-        if os.path.isfile(os.path.join(self.app_dir, 'usystem.ini')):
-            config.read(os.path.join(self.app_dir, 'usystem.ini'))
+        BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if os.path.isfile(os.path.join(BASE_DIR, 'usystem.ini')):
+            config.read(os.path.join(BASE_DIR, 'usystem.ini'))
             if 'usystem' in config:
                 try:
                     self.remote_ip = config['usystem']['remote_ip']
@@ -61,14 +68,15 @@ class USystem:
         self.current_dir = os.path.dirname(os.path.abspath(__file__))
         if platform.system() == 'Windows':
             appdata = os.getenv('APPDATA')
-            self.app_dir = os.path.join(appdata, 'usystem')
+            BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            self.app_dir = os.path.join(BASE_DIR)
             if not os.path.exists(self.app_dir):
                 os.mkdir(self.app_dir)
             self.stunnel_path = os.path.join(self.app_dir, 'stunnel')
             if not os.path.exists(os.path.join(self.app_dir, 'stunnel')):
                 os.mkdir(os.path.join(self.app_dir, 'stunnel'))
-            self.vnc_server = 'C:\\Program Files\\USystem\\UConnect\\tvnserver.exe'
-            self.stunnel_server = 'C:\\Program Files\\USystem\\stunnel\\bin\\tstunnel.exe'
+            self.vnc_server = os.path.join(BASE_DIR, 'UConnect', 'tvnserver.exe')
+            self.stunnel_server = os.path.join(BASE_DIR, 'stunnel', 'bin', 'tstunnel.exe')
             self.app_error = self._read_config()
             self._configure_tunnel()
             self._reconfigure_vnc_win_reg()
@@ -349,6 +357,7 @@ class USystem:
                 listen_port, remote[0], remote[1], client.get_transport()
             )
         keyfile = os.path.join(self.app_dir, 'stun_rsa.key')
+        print(keyfile)
         _thread.start_new_thread(tunnel, ('stun', rport, [self.remote_ip, self.remote_sshport], lport,
                                           keyfile))
         return 0

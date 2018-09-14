@@ -6,7 +6,10 @@ import aiohttp
 import asyncio
 import os
 import ssl
-from client.client_func import USystem
+try:
+    from client.client_func import USystem
+except:
+    from client_func import USystem
 import _thread
 import platform
 

@@ -16,7 +16,10 @@ import sys
 import os
 from PyQt5 import QtGui, QtCore, QtWidgets
 from locale import getdefaultlocale
-from client.transport import UTransport
+try:
+    from client.transport import UTransport
+except:
+    from transport import UTransport
 from multiprocessing import Pool
 import _thread
 
@@ -199,7 +202,6 @@ class UGuiClient:
         translator = QtCore.QTranslator(self.app)
         translator.load(os.path.join(self.current_dir, 'locale', 'qt_%s.qm' % locale[0]))
         self.app.installTranslator(translator)
-
         self.trayIcon = QtWidgets.QSystemTrayIcon()
         self.statusicon_low = QtGui.QIcon(os.path.join(self.current_dir, 'img', 'security-low.png'))
         self.statusicon_high = QtGui.QIcon(os.path.join(self.current_dir, 'img', 'security-hight.png'))

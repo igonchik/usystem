@@ -11,8 +11,10 @@ import re
 import platform
 import tarfile
 import zipfile
-#FOR linux
-#import magic
+try:
+    import magic
+except:
+    pass
 
 path_end = r'(?P<path>[\w\d_ -/.]*)$'
 

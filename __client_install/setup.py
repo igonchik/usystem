@@ -4,6 +4,9 @@ import ctypes
 import tempfile
 import shutil
 from pathlib import Path
+from win32com.client import Dispatch
+import winshell
+import subprocess
 
 
 def is_admin():
@@ -55,6 +58,27 @@ def run_setup():
                        os.path.join(appdata, "usystem", temp_name, 'share'))
     dest = os.open(os.path.join(setup_folder, 'usystem.ini'), os.O_RDWR | os.O_CREAT)
     os.write(dest, ini.encode('utf8'))
+
+    desktop = winshell.desktop()
+    path = os.path.join(desktop, "USystem{0}.lnk".format(temp_name))
+    target = os.path.join(setup_folder, 'agent', 'main_client.exe')
+    wDir = os.path.join(setup_folder, 'agent')
+    icon = os.path.join(setup_folder, 'agent', 'main.ico')
+    shell = Dispatch('WScript.Shell')
+    shortcut = shell.CreateShortCut(path)
+    shortcut.Targetpath = target
+    shortcut.WorkingDirectory = wDir
+    shortcut.IconLocation = icon
+    shortcut.save()
+    startup = os.path.join(os.getenv('APPDATA'), 'Microsoft', 'Windows', 'Start Menu', 'Programs',
+                           'Startup', "USystem{0}.lnk".format(temp_name))
+    shortcut = shell.CreateShortCut(startup)
+    shortcut.Targetpath = target
+    shortcut.WorkingDirectory = wDir
+    shortcut.IconLocation = icon
+    shortcut.save()
+    subprocess.Popen([os.path.join(setup_folder, 'agent', 'main_client.exe')], cwd=os.path.join(setup_folder, 'agent'),
+                     close_fds=True)
 
 
 if __name__ == '__main__':

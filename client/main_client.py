@@ -12,6 +12,8 @@ pip install aiodns
 pip install pyopenssl
 """
 
+# pyinstall --onefile --noconsole --icon=app.ico main_client.py
+
 import sys
 import os
 from PyQt5 import QtGui, QtCore, QtWidgets
@@ -193,7 +195,7 @@ class UGuiClient:
     def __init__(self):
         self.app = QtWidgets.QApplication(sys.argv)
         self.current_dir = os.path.dirname(os.path.abspath(__file__))
-        self.usystem = UTransport()
+        self.usystem = UTransport(usystem_context=self.current_dir)
         self.usystem_uid = ''
         self.usystem_gid = ''
         _thread.start_new_thread(self.usystem.thread_transport, ())

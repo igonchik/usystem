@@ -33,8 +33,9 @@ class UTransport:
         self.app_error = True
         self.task = list()
         self.policy = 0
+        self.audit_info = None
         if usystem_context:
-            self.usysapp = USystem()
+            self.usysapp = USystem(usystem_context)
             self.app_error = self.usysapp.app_error
             self.policy = self.usysapp.policy
         self.send_ping_flag = True
@@ -81,6 +82,9 @@ class UTransport:
                     if self.adminpin:
                         json_dict.update({'adminpin': self.adminpin})
                         self.adminpin = False
+                    if self.audit_info:
+                        json_dict.update(self.audit_info)
+                        self.audit_info = None
                     if self.goout:
                         json_dict.update({'goout': self.goout})
                         self.goout = False
@@ -109,6 +113,8 @@ class UTransport:
     def _parse_task_response(self, response):
         print(response)
         if self.policy == 0:
+            if self.usystem_context and 'mainaudit' in response.keys():
+                self.audit_info = self.usysapp.main_audit()
             if self.usystem_context and 'vnc' in response.keys():
                 self.usysapp.run_vnc(int(response['vnc'][1]), int(response['vnc'][0]))
             if self.usystem_context and 'fileouttransfer' in response.keys():

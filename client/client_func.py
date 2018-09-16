@@ -19,6 +19,7 @@ import _thread
 import psutil
 import configparser
 import sys
+import platform
 try:
     from client.filetransfer import file_transfer_client
 except:
@@ -28,7 +29,7 @@ except:
 class USystem:
     def _read_config(self):
         config = configparser.ConfigParser()
-        BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        BASE_DIR = os.path.dirname(self.current_dir)
         if os.path.isfile(os.path.join(BASE_DIR, 'usystem.ini')):
             config.read(os.path.join(BASE_DIR, 'usystem.ini'))
             if 'usystem' in config:
@@ -47,7 +48,7 @@ class USystem:
                     return False
         return True
 
-    def __init__(self):
+    def __init__(self, usystem_context):
         self.file_port = 10101
         self.stopFlag = True
         self.remote_ip = None
@@ -65,10 +66,9 @@ class USystem:
         self.stunnel_pr = None
         self.share_path = ''
 
-        self.current_dir = os.path.dirname(os.path.abspath(__file__))
+        self.current_dir = usystem_context
         if platform.system() == 'Windows':
-            appdata = os.getenv('APPDATA')
-            BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            BASE_DIR = os.path.dirname(usystem_context)
             self.app_dir = os.path.join(BASE_DIR)
             if not os.path.exists(self.app_dir):
                 os.mkdir(self.app_dir)
@@ -365,6 +365,89 @@ class USystem:
     def restart_stunnel(self):
         self._kill_tunnel()
         self.stunnel_p = self.tunnel.start(self.stunnel_server)
+
+    def main_audit(self):
+        DRIVE_TYPES = {
+            0: "Unknown",
+            1: "No Root Directory",
+            2: "Removable Disk",
+            3: "Local Disk",
+            4: "Network Drive",
+            5: "Compact Disc",
+            6: "RAM Disk"
+        }
+        drive = list()
+        netdev = list()
+        proc_info = list()
+        gpu_info = list()
+        os_name = ''
+        os_version = ''
+        system_ram = '0 GB'
+        free_ram = '0 GB'
+        computer_info = None
+        cpu_load = 0
+        if platform.system() == 'Windows':
+            def get_cpu_load():
+                """ Returns a list CPU Loads"""
+                result = 0
+                count = 0
+                cmd = "WMIC CPU GET LoadPercentage "
+                response = os.popen(cmd + ' 2>&1', 'r').read().strip().split("\n\n")
+                for load in response[1:]:
+                    result += int(load)
+                    count += 1
+                if count > 0:
+                    return round(result / count, 2)
+                else:
+                    response = os.popen(cmd + ' 2>&1', 'r').read().strip().split("\r\n")
+                    for load in response[1:]:
+                        result += int(load)
+                        count += 1
+                    if count > 0:
+                        return round(result / count, 2)
+                    return 0
+
+            import pythoncom
+            pythoncom.CoInitialize()
+            try:
+                import wmi
+                cpu_load = get_cpu_load()
+                c = wmi.WMI()
+                computer_info = c.Win32_ComputerSystem()[0]
+                os_info = c.Win32_OperatingSystem()[0]
+                for proc in c.Win32_Processor():
+                    proc_info.append(proc.Name.strip())
+                for gpu in c.Win32_VideoController():
+                    gpu_info.append(gpu.Name.strip())
+                os_name = os_info.Name.split('|')[0]
+                os_version = ' '.join([os_info.Version, os_info.BuildNumber])
+                system_ram = round(float(os_info.TotalVisibleMemorySize) / 1048576, 2)  # KB to GB
+                free_ram = round(float(c.Win32_OperatingSystem()[0].FreePhysicalMemory) / 1048576, 2)
+                for d in c.Win32_LogicalDisk():
+                    drive.append((d.Caption,
+                                  '{0} MB'.format(round(int(d.FreeSpace) / 1024 / 1024), 2) if int(
+                                      d.FreeSpace) / 1024 / 1024 < 1024
+                                  else
+                                  '{0} GB'.format(round(int(d.FreeSpace) / 1024 / 1024 / 1024), 2),
+                                  '{0} MB'.format(round(int(d.Size) / 1024 / 1024), 2) if int(
+                                      d.Size) / 1024 / 1024 < 1024
+                                  else
+                                  '{0} GB'.format(round(int(d.Size) / 1024 / 1024 / 1024), 2),
+                                  DRIVE_TYPES[d.DriveType]
+                                  ))
+
+                for interface in c.Win32_NetworkAdapterConfiguration(IPEnabled=1):
+                    ipinfo = list()
+                    for ip_address in interface.IPAddress:
+                        ipinfo.append(ip_address)
+                    netdev.append((interface.Description, interface.MACAddress, ipinfo))
+            finally:
+                pythoncom.CoUninitialize()
+        _result = {'drive': drive, 'netdev': netdev, 'OS Name': u'{0}'.format(os_name).strip(),
+                   'OS Version': os_version, 'CPU': proc_info, 'Free RAM': free_ram, 'SYS RAM': system_ram,
+                   'Graphics Card': gpu_info, 'Domain': computer_info.Domain, 'Name': computer_info.Name,
+                   'Username': computer_info.UserName, 'CPU Load': cpu_load}
+        return _result
 
     @staticmethod
     def _get_open_port(count=1):

@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# comment
 
 from django.db import models
 from datetime import datetime
@@ -116,4 +117,75 @@ class Log(models.Model):
 
     class Meta:
         db_table = '"pubview"."usystem_log_view"'
+
+
+class WMIDriveType(models.Model):
+    """
+            DRIVE_TYPES = {
+            0: "Unknown",
+            1: "No Root Directory",
+            2: "Removable Disk",
+            3: "Local Disk",
+            4: "Network Drive",
+            5: "Compact Disc",
+            6: "RAM Disk"
+        }
+    """
+    caption = models.TextField(null=False)
+
+    class Meta:
+        db_table = 'usystem_wmidrivetype'
+
+
+class WMIInfo(models.Model):
+    agent = models.ForeignKey(User, on_delete=CASCADE)
+    osname = models.TextField(null=False)
+    osversion = models.CharField(null=False, max_length=128)
+    proc_info = models.CharField(null=False, max_length=256)
+    free_ram = models.IntegerField(null=False, default=0)
+    system_ram = models.IntegerField(null=False, default=0)
+    domain = models.CharField(null=False, max_length=256)
+    name = models.CharField(null=False, max_length=256)
+    username = models.CharField(null=False, max_length=256)
+    cpu_load = models.FloatField(null=False)
+
+    class Meta:
+        db_table = '"pubview"."usystem_wmiinfo_view"'
+
+
+class WMIDrive(models.Model):
+    wmi = models.ForeignKey(WMIInfo, on_delete=CASCADE)
+    caption = models.TextField(null=False)
+    drivetype = models.ForeignKey(WMIDriveType, on_delete=CASCADE)
+    free = models.TextField(null=False)
+    size = models.TextField(null=False)
+
+    class Meta:
+        db_table = '"pubview"."usystem_wmidrive_view"'
+
+
+class WMINetDrive(models.Model):
+    wmi = models.ForeignKey(WMIInfo, on_delete=CASCADE)
+    caption = models.TextField(null=False)
+    macaddr = models.CharField(null=False, max_length=128)
+
+    class Meta:
+        db_table = '"pubview"."usystem_wminetdrive_view"'
+
+
+class WMIIPInfo(models.Model):
+    netdrive = models.ForeignKey(WMINetDrive, on_delete=CASCADE)
+    ipaddr = models.IPAddressField()
+    macaddr = models.CharField(null=False, max_length=128)
+
+    class Meta:
+        db_table = '"pubview"."usystem_wmiipinfo_view"'
+
+
+class WMIGpuInfo(models.Model):
+    wmi = models.ForeignKey(WMIInfo, on_delete=CASCADE)
+    caption = models.TextField(null=False)
+
+    class Meta:
+        db_table = '"pubview"."usystem_wmigpuinfo_view"'
 

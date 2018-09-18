@@ -253,3 +253,128 @@ grant select, update on usystem_user2group_id_seq to umaster;
 grant select on usystem_programm_class to umaster;
 grant select on usystem_programm_class to uminion;
 commit;
+
+
+-- WMI
+begin;
+create table usystem_wmidrivetype (
+        id    SERIAL  PRIMARY KEY,
+        caption character varying (100) not null
+);
+
+insert into usystem_wmidrivetype values (0, 'Unknown');
+insert into usystem_wmidrivetype values (1, 'No Root Directory');
+insert into usystem_wmidrivetype values (2, 'Removable Disk');
+insert into usystem_wmidrivetype values (3, 'Local Disk');
+insert into usystem_wmidrivetype values (4, 'Network Drive');
+insert into usystem_wmidrivetype values (5, 'Compact Disc');
+insert into usystem_wmidrivetype values (6, 'RAM Disk');
+
+grant select on usystem_wmidrivetype to umaster;
+
+create table usystem_wmiinfo (
+        id    SERIAL  PRIMARY KEY,
+        agent_id integer not null REFERENCES usystem_user (id) on delete cascade,
+        osname text not null,
+        osversion character varying (128) not null,
+        proc_info  character varying (256) not null,
+        free_ram bigint not null,
+        system_ram bigint not null,
+        domain character varying (256) not null,
+        name character varying (256) not null,
+        username character varying (256) not null,
+        cpu_load float not null,
+        update_tstamp timestamp without time zone not null default now()
+);
+
+create or replace view pubview.usystem_wmiinfo_view as select * from usystem_wmiinfo where
+  (agent_id in (select id from pubview.usystem_user_view));
+grant select, insert, delete on pubview.usystem_wmiinfo_view to uminion;
+grant select on pubview.usystem_wmiinfo_view to umaster;
+grant select,update on sequence usystem_wmiinfo_id_seq to uminion;
+
+create or replace rule pubview_usystem_wmiinfo_insert as on insert to pubview.usystem_wmiinfo_view do instead
+	insert into public.usystem_wmiinfo (agent_id, osname, osversion, proc_info, free_ram, system_ram, domain, name, username, cpu_load)
+		values (NEW.agent_id, NEW.osname, NEW.osversion, NEW.proc_info, NEW.free_ram, NEW.system_ram, NEW.domain, NEW.name,
+		  NEW.username, NEW.cpu_load) returning *;
+create or replace rule pubview_usystem_wmiinfo_delete as on delete to pubview.usystem_wmiinfo_view do instead
+  delete from public.usystem_wmiinfo where id=OLD.id;
+
+create table usystem_wmidrive (
+  id    SERIAL  PRIMARY KEY,
+  wmi_id integer not null REFERENCES usystem_wmiinfo(id) on delete cascade,
+  caption text not null,
+  drivetype_id integer not null REFERENCES usystem_wmidrivetype(id) on delete cascade,
+  free bigint not null,
+  size bigint not null
+);
+
+create or replace view pubview.usystem_wmidrive_view as select * from usystem_wmidrive where
+  (wmi_id in (select id from pubview.usystem_wmiinfo_view));
+grant select, insert, delete on pubview.usystem_wmidrive_view to uminion;
+grant select on pubview.usystem_wmidrive_view to umaster;
+grant select,update on sequence usystem_wmidrive_id_seq to uminion;
+
+create or replace rule pubview_usystem_wmidrive_insert as on insert to pubview.usystem_wmidrive_view do instead
+	insert into public.usystem_wmidrive (wmi_id, caption, drivetype_id, free, size)
+		values (NEW.wmi_id, NEW.caption, NEW.drivetype_id, NEW.free, NEW.size) returning *;
+create or replace rule pubview_usystem_wmidrive_delete as on delete to pubview.usystem_wmidrive_view do instead
+  delete from public.usystem_wmidrive where id=OLD.id;
+
+
+create table usystem_wminetdrive (
+  id    SERIAL  PRIMARY KEY,
+  wmi_id integer not null REFERENCES usystem_wmiinfo(id) on delete cascade,
+  caption text not null,
+  macaddr character varying (128) not null
+);
+
+create or replace view pubview.usystem_wminetdrive_view as select * from usystem_wminetdrive where
+  (wmi_id in (select id from pubview.usystem_wmiinfo_view));
+grant select, insert, delete on pubview.usystem_wminetdrive_view to uminion;
+grant select on pubview.usystem_wminetdrive_view to umaster;
+grant select,update on sequence usystem_wminetdrive_id_seq to uminion;
+
+create or replace rule pubview_usystem_wminetdrive_insert as on insert to pubview.usystem_wminetdrive_view do instead
+	insert into public.usystem_wminetdrive (wmi_id, caption, macaddr)
+		values (NEW.wmi_id, NEW.caption, NEW.macaddr) returning *;
+create or replace rule pubview_usystem_wminetdrive_delete as on delete to pubview.usystem_wminetdrive_view do instead
+  delete from public.usystem_wminetdrive where id=OLD.id;
+
+create table usystem_wmiipinfo (
+  id    SERIAL  PRIMARY KEY,
+  netdrive_id integer not null REFERENCES usystem_wminetdrive(id) on delete cascade,
+  ipaddr cidr,
+  macaddr character varying (128) not null
+);
+
+create or replace view pubview.usystem_wmiipinfo_view as select * from usystem_wmiipinfo where
+  (netdrive_id in (select id from pubview.usystem_wminetdrive_view));
+grant select, insert, delete on pubview.usystem_wmiipinfo_view to uminion;
+grant select on pubview.usystem_wmiipinfo_view to umaster;
+grant select,update on sequence usystem_wmiipinfo_id_seq to uminion;
+
+create or replace rule pubview_usystem_wmiipinfo_insert as on insert to pubview.usystem_wmiipinfo_view do instead
+	insert into public.usystem_wmiipinfo (netdrive_id, ipaddr, macaddr)
+		values (NEW.netdrive_id, NEW.ipaddr, NEW.macaddr) returning *;
+create or replace rule pubview_usystem_wmiipinfo_delete as on delete to pubview.usystem_wmiipinfo_view do instead
+  delete from public.usystem_wmiipinfo where id=OLD.id;
+
+create table usystem_wmigpuinfo (
+        id    SERIAL  PRIMARY KEY,
+        wmi_id integer not null REFERENCES usystem_wmiinfo(id) on delete cascade,
+        caption text not null
+);
+
+create or replace view pubview.usystem_wmigpuinfo_view as select * from usystem_wmigpuinfo where
+  (wmi_id in (select id from pubview.usystem_wmiinfo_view));
+grant select, insert, delete on pubview.usystem_wmigpuinfo_view to uminion;
+grant select on pubview.usystem_wmigpuinfo_view to umaster;
+grant select,update on sequence usystem_wmigpuinfo_id_seq to uminion;
+
+create or replace rule pubview_usystem_wmigpuinfo_insert as on insert to pubview.usystem_wmigpuinfo_view do instead
+	insert into public.usystem_wmigpuinfo (wmi_id, caption)
+		values (NEW.wmi_id, NEW.caption) returning *;
+create or replace rule pubview_usystem_wmigpuinfo_delete as on delete to pubview.usystem_wmigpuinfo_view do instead
+  delete from public.usystem_wmigpuinfo where id=OLD.id;
+commit;

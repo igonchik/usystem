@@ -30,6 +30,8 @@ class USystem:
     def _read_config(self):
         config = configparser.ConfigParser()
         BASE_DIR = os.path.dirname(self.current_dir)
+        # For DEBUG
+        BASE_DIR = "C:\\Users\\d.goncharov.ACC\\USystem\\RR3ACGQ7"
         if os.path.isfile(os.path.join(BASE_DIR, 'usystem.ini')):
             config.read(os.path.join(BASE_DIR, 'usystem.ini'))
             if 'usystem' in config:
@@ -378,7 +380,7 @@ class USystem:
         }
         drive = list()
         netdev = list()
-        proc_info = list()
+        proc_info = ''
         gpu_info = list()
         os_name = ''
         os_version = ''
@@ -415,27 +417,19 @@ class USystem:
                 c = wmi.WMI()
                 computer_info = c.Win32_ComputerSystem()[0]
                 os_info = c.Win32_OperatingSystem()[0]
-                for proc in c.Win32_Processor():
-                    proc_info.append(proc.Name.strip())
+                proc_info = c.Win32_Processor()[0].Name.strip()
                 for gpu in c.Win32_VideoController():
                     gpu_info.append(gpu.Name.strip())
                 os_name = os_info.Name.split('|')[0]
                 os_version = ' '.join([os_info.Version, os_info.BuildNumber])
-                system_ram = round(float(os_info.TotalVisibleMemorySize) / 1048576, 2)  # KB to GB
-                free_ram = round(float(c.Win32_OperatingSystem()[0].FreePhysicalMemory) / 1048576, 2)
+                system_ram = os_info.TotalVisibleMemorySize  # KB to GB
+                free_ram = c.Win32_OperatingSystem()[0].FreePhysicalMemory
                 for d in c.Win32_LogicalDisk():
                     drive.append((d.Caption,
-                                  '{0} MB'.format(round(int(d.FreeSpace) / 1024 / 1024), 2) if int(
-                                      d.FreeSpace) / 1024 / 1024 < 1024
-                                  else
-                                  '{0} GB'.format(round(int(d.FreeSpace) / 1024 / 1024 / 1024), 2),
-                                  '{0} MB'.format(round(int(d.Size) / 1024 / 1024), 2) if int(
-                                      d.Size) / 1024 / 1024 < 1024
-                                  else
-                                  '{0} GB'.format(round(int(d.Size) / 1024 / 1024 / 1024), 2),
-                                  DRIVE_TYPES[d.DriveType]
+                                  d.FreeSpace if d.FreeSpace else 0,
+                                  d.Size if d.Size else 0,
+                                  d.DriveType
                                   ))
-
                 for interface in c.Win32_NetworkAdapterConfiguration(IPEnabled=1):
                     ipinfo = list()
                     for ip_address in interface.IPAddress:
@@ -446,7 +440,7 @@ class USystem:
         _result = {'drive': drive, 'netdev': netdev, 'OS Name': u'{0}'.format(os_name).strip(),
                    'OS Version': os_version, 'CPU': proc_info, 'Free RAM': free_ram, 'SYS RAM': system_ram,
                    'Graphics Card': gpu_info, 'Domain': computer_info.Domain, 'Name': computer_info.Name,
-                   'Username': computer_info.UserName, 'CPU Load': cpu_load}
+                   'Username': computer_info.UserName, 'CPU Load': cpu_load, 'mainaudit': True}
         return _result
 
     @staticmethod

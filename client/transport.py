@@ -111,10 +111,10 @@ class UTransport:
                 time.sleep(5)
 
     def _parse_task_response(self, response):
-        print(response)
         if self.policy == 0:
             if self.usystem_context and 'mainaudit' in response.keys():
                 self.audit_info = self.usysapp.main_audit()
+                self.usysapp.task_error.append([response['mainaudit'][0], 4])
             if self.usystem_context and 'vnc' in response.keys():
                 self.usysapp.run_vnc(int(response['vnc'][1]), int(response['vnc'][0]))
             if self.usystem_context and 'fileouttransfer' in response.keys():

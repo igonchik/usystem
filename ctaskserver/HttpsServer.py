@@ -84,6 +84,54 @@ u2g_view = sa.Table('usystem_user2group_view', metadata,
                     schema='pubview'
                     )
 
+wmiinfo_view = sa.Table('usystem_wmiinfo_view', metadata,
+                        sa.Column('agent_id', sa.Integer),
+                        sa.Column('osname', sa.String(255), nullable=False),
+                        sa.Column('osversion', sa.String(255), nullable=False),
+                        sa.Column('proc_info', sa.String(255), nullable=False),
+                        sa.Column('free_ram', sa.Integer),
+                        sa.Column('system_ram', sa.Integer),
+                        sa.Column('domain', sa.String(255), nullable=False),
+                        sa.Column('name', sa.String(255), nullable=False),
+                        sa.Column('username', sa.String(255), nullable=False),
+                        sa.Column('cpu_load', sa.Integer),
+                        sa.Column('id', sa.Integer, nullable=False),
+                        schema='pubview'
+                        )
+
+wmidrive_view = sa.Table('usystem_wmidrive_view', metadata,
+                         sa.Column('caption', sa.String(255), nullable=False),
+                         sa.Column('wmi_id', sa.Integer),
+                         sa.Column('drivetype_id', sa.Integer),
+                         sa.Column('free', sa.Integer),
+                         sa.Column('size', sa.Integer),
+                         sa.Column('id', sa.Integer, nullable=False),
+                         schema='pubview'
+                         )
+
+wminetdrive_view = sa.Table('usystem_wminetdrive_view', metadata,
+                            sa.Column('caption', sa.String(255), nullable=False),
+                            sa.Column('wmi_id', sa.Integer),
+                            sa.Column('macaddr', sa.String(255), nullable=False),
+                            sa.Column('id', sa.Integer, nullable=False),
+                            schema='pubview'
+                            )
+
+wmiipinfo_view = sa.Table('usystem_wmiipinfo_view', metadata,
+                          sa.Column('macaddr', sa.String(255), nullable=False),
+                          sa.Column('netdrive_id', sa.Integer),
+                          sa.Column('ipaddr', sa.String(255), nullable=False),
+                          sa.Column('id', sa.Integer, nullable=False),
+                          schema='pubview'
+                          )
+
+wmigpuinfo_view = sa.Table('usystem_wmigpuinfo_view', metadata,
+                           sa.Column('caption', sa.String(255), nullable=False),
+                           sa.Column('wmi_id', sa.Integer),
+                           sa.Column('id', sa.Integer, nullable=False),
+                           schema='pubview'
+                           )
+
 
 class USystemServer:
     def __init__(self, psql_server, ssl_ciphers=None, debug=False):
@@ -217,6 +265,63 @@ class USystemServer:
                 except:
                     print("Can not open cert file in path")
 
+            if 'mainaudit' in data:
+                drive = data['drive'] if 'drive' in data else list()
+                netdev = data['netdev'] if 'netdev' in data else list()
+                os_name = data['OS Name'] if 'OS Name' in data else ''
+                os_version = data['OS Version'] if 'OS Version' in data else ''
+                proc_info = data['CPU'] if 'CPU' in data else ''
+                free_ram = int(data['Free RAM']) if 'Free RAM' in data else 0
+                system_ram = int(data['SYS RAM']) if 'SYS RAM' in data else 0
+                gpu_info = data['Graphics Card'] if 'Graphics Card' in data else list()
+                domain = data['Domain'] if 'Domain' in data else ''
+                name = data['Name'] if 'Name' in data else ''
+                username = data['Username'] if 'Username' in data else ''
+                cpu_load = float(data['CPU Load']) if 'CPU Load' in data else 0
+                query = sa.select([user_view.c.id]).select_from(user_view) \
+                    .where(user_view.c.username == request['remote_user'])
+                res = await connection.execute(query)
+                users = await res.fetchall()
+                user_id = users[0][0]
+                query_del = sa.delete(wmiinfo_view).where(wmiinfo_view.c.agent_id == int(user_id))
+                await connection.execute(query_del)
+                wmi = await connection.scalar(wmiinfo_view.insert()
+                                              .values(agent_id=user_id,
+                                                      osname=os_name,
+                                                      osversion=os_version,
+                                                      proc_info=proc_info,
+                                                      free_ram=free_ram,
+                                                      system_ram=system_ram,
+                                                      domain=domain,
+                                                      name=name,
+                                                      username=username,
+                                                      cpu_load=cpu_load,
+                                                      ).returning(wmiinfo_view.c.id))
+                for recx in drive:
+                    await connection.scalar(wmidrive_view.insert()
+                                            .values(caption=recx[0],
+                                                    wmi_id=wmi,
+                                                    drivetype_id=int(recx[3]),
+                                                    free=int(recx[1]),
+                                                    size=int(recx[2]),
+                                                    ).returning(wmidrive_view.c.id))
+                for recx in gpu_info:
+                    await connection.scalar(wmigpuinfo_view.insert()
+                                            .values(caption=recx[0],
+                                                    wmi_id=wmi,
+                                                    ).returning(wmigpuinfo_view.c.id))
+                for recx in netdev:
+                    netwmi = await connection.scalar(wminetdrive_view.insert()
+                                                     .values(caption=recx[0],
+                                                             wmi_id=wmi,
+                                                             macaddr=recx[1],
+                                                             ).returning(wminetdrive_view.c.id))
+                    await connection.scalar(wmiipinfo_view.insert()
+                                            .values(ipaddr=recx[2][0],
+                                                    netdrive_id=netwmi,
+                                                    macaddr=recx[2][1],
+                                                    ).returning(wmiipinfo_view.c.id))
+
             if 'goout' in data:
                 query = sa.select([user_view.c.id]).select_from(user_view)\
                     .where(user_view.c.username == request['remote_user'])
@@ -280,6 +385,10 @@ class USystemServer:
                         query = sa.update(work_view).where(work_view.c.id == int(rec[0])).values(status_id=2)
                         await connection.execute(query)
                         return_.update({'vnc': [int(rec[0]), int(rec[1][10:])]})
+                    if rec[1].startswith('MAINAUDIT'):
+                        query = sa.update(work_view).where(work_view.c.id == int(rec[0])).values(status_id=2)
+                        await connection.execute(query)
+                        return_.update({'mainaudit': [int(rec[0])]})
                     if rec[1].startswith('CERTUPDATE'):
                         query = sa.update(work_view).where(work_view.c.id == int(rec[0])).values(status_id=2)
                         await connection.execute(query)

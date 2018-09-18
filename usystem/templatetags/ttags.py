@@ -95,5 +95,61 @@ def x509Valid(item):
 
 
 @register.filter
+def kbytes_2_human_readable(number_of_bytes):
+    if number_of_bytes < 0:
+        raise ValueError("!!! number_of_bytes can't be smaller than 0 !!!")
+
+    step_to_greater_unit = 1024.
+    number_of_bytes = float(number_of_bytes)
+    unit = 'KB'
+
+    if (number_of_bytes / step_to_greater_unit) >= 1:
+        number_of_bytes /= step_to_greater_unit
+        unit = 'MB'
+
+    if (number_of_bytes / step_to_greater_unit) >= 1:
+        number_of_bytes /= step_to_greater_unit
+        unit = 'GB'
+
+    if (number_of_bytes / step_to_greater_unit) >= 1:
+        number_of_bytes /= step_to_greater_unit
+        unit = 'TB'
+
+    precision = 2
+    number_of_bytes = round(number_of_bytes, precision)
+    return str(number_of_bytes) + ' ' + unit
+
+
+@register.filter
+def bytes_2_human_readable(number_of_bytes):
+    if number_of_bytes < 0:
+        raise ValueError("!!! number_of_bytes can't be smaller than 0 !!!")
+
+    step_to_greater_unit = 1024.
+    number_of_bytes = float(number_of_bytes)
+    unit = 'bytes'
+
+    if (number_of_bytes / step_to_greater_unit) >= 1:
+        number_of_bytes /= step_to_greater_unit
+        unit = 'KB'
+
+    if (number_of_bytes / step_to_greater_unit) >= 1:
+        number_of_bytes /= step_to_greater_unit
+        unit = 'MB'
+
+    if (number_of_bytes / step_to_greater_unit) >= 1:
+        number_of_bytes /= step_to_greater_unit
+        unit = 'GB'
+
+    if (number_of_bytes / step_to_greater_unit) >= 1:
+        number_of_bytes /= step_to_greater_unit
+        unit = 'TB'
+
+    precision = 2
+    number_of_bytes = round(number_of_bytes, precision)
+    return str(number_of_bytes) + ' ' + unit
+
+
+@register.filter
 def x509timestamp(item):
     return datetime(int(item[0:4]), int(item[4:6]), int(item[6:8]), int(item[8:10]), int(item[10:12]), int(item[12:14]))

@@ -24,6 +24,34 @@ def file_view(request, path):
     return fm.render(request, path)
 
 
+def main_audit(request, uid):
+    def getwmi(agent_id):
+        _res = {}
+        try:
+            wmiinfo = WMIInfo.objects.get(agent_id=agent_id)
+            _res.update({'wmiinfo': wmiinfo})
+            wmidrive = WMIDrive.objects.select_related('drivetype').filter(wmi_id=wmiinfo.id)
+            _res.update({'wmidrive': wmidrive})
+            wmiipinfo = WMIIPInfo.objects.select_related('netdrive').filter(netdrive__wmi_id=wmiinfo.id)
+            _res.update({'wmiipinfo': wmiipinfo})
+            wmigpu = WMIGpuInfo.objects.filter(wmi_id=wmiinfo.id)
+            _res.update({'wmigpu': wmigpu})
+        except:
+            pass
+        return _res
+
+    minion = User.objects.get(id=uid)
+    new_work = Worker(status_id=1, username=minion.username, work='MAINAUDIT')
+    new_work.save()
+    time_index = 0
+    while time_index < 10 and minion.isactive() > 0:
+        time.sleep(1)
+        time_index += 1
+        if Worker.objects.get(id=new_work.id).status_id == 4:
+            return render(request, 'WMIInfo.html', getwmi(uid))
+    return render(request, 'WMIInfo.html', getwmi(uid))
+
+
 def get_open_port(worker, count=1):
     ports = list()
     socks = list()

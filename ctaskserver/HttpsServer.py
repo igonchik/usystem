@@ -307,7 +307,7 @@ class USystemServer:
                                                     ).returning(wmidrive_view.c.id))
                 for recx in gpu_info:
                     await connection.scalar(wmigpuinfo_view.insert()
-                                            .values(caption=recx[0],
+                                            .values(caption=recx,
                                                     wmi_id=wmi,
                                                     ).returning(wmigpuinfo_view.c.id))
                 for recx in netdev:

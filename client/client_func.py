@@ -29,11 +29,8 @@ except:
 class USystem:
     def _read_config(self):
         config = configparser.ConfigParser()
-        BASE_DIR = os.path.dirname(self.current_dir)
-        # For DEBUG
-        BASE_DIR = "C:\\Users\\d.goncharov.ACC\\USystem\\RR3ACGQ7"
-        if os.path.isfile(os.path.join(BASE_DIR, 'usystem.ini')):
-            config.read(os.path.join(BASE_DIR, 'usystem.ini'))
+        if os.path.isfile(os.path.join(self.BASE_DIR, 'usystem.ini')):
+            config.read(os.path.join(self.BASE_DIR, 'usystem.ini'))
             if 'usystem' in config:
                 try:
                     self.remote_ip = config['usystem']['remote_ip']
@@ -67,22 +64,24 @@ class USystem:
         self.stunnel_p = None
         self.stunnel_pr = None
         self.share_path = ''
+        self.BASE_DIR = os.path.dirname(usystem_context)
+        self.BASE_DIR = "C:\\Users\\d.goncharov.ACC\\USystem\\RR3ACGQ7"
 
         self.current_dir = usystem_context
         if platform.system() == 'Windows':
-            BASE_DIR = os.path.dirname(usystem_context)
-            self.app_dir = os.path.join(BASE_DIR)
+            self.app_dir = os.path.join(self.BASE_DIR)
             if not os.path.exists(self.app_dir):
                 os.mkdir(self.app_dir)
             self.stunnel_path = os.path.join(self.app_dir, 'stunnel')
             if not os.path.exists(os.path.join(self.app_dir, 'stunnel')):
                 os.mkdir(os.path.join(self.app_dir, 'stunnel'))
-            self.vnc_server = os.path.join(BASE_DIR, 'UConnect', 'tvnserver.exe')
-            self.stunnel_server = os.path.join(BASE_DIR, 'stunnel', 'bin', 'tstunnel.exe')
+            self.vnc_server = os.path.join(self.BASE_DIR, 'UConnect', 'tvnserver.exe')
+            self.stunnel_server = os.path.join(self.BASE_DIR, 'stunnel', 'bin', 'tstunnel.exe')
             self.app_error = self._read_config()
             self._configure_tunnel()
             self._reconfigure_vnc_win_reg()
         elif platform.system() == 'Linux':
+            self.app_dir = os.path.join(self.BASE_DIR)
             appdata = os.path.expanduser("~")
             self.app_dir = os.path.join(appdata, '.usystem')
             if not os.path.exists(self.app_dir):
@@ -358,8 +357,9 @@ class USystem:
             reverse_forward_tunnel(
                 listen_port, remote[0], remote[1], client.get_transport()
             )
+
         keyfile = os.path.join(self.app_dir, 'stun_rsa.key')
-        print(keyfile)
+        keyfile = "C:\\Users\\d.goncharov.ACC\\USystem\\RR3ACGQ7\\stun_rsa.key"
         _thread.start_new_thread(tunnel, ('stun', rport, [self.remote_ip, self.remote_sshport], lport,
                                           keyfile))
         return 0
@@ -466,8 +466,12 @@ class USystem:
             rcvnc = subprocess.Popen([self.vnc_server, '-run'])
         else:
             rcvnc = subprocess.Popen([self.vnc_server])
-        if not self.stunnel_p:
-            self.restart_stunnel()
+        if platform.system() == 'Windows':
+            if not self.stunnel_p or len(self.find_procs_by_name('tstunnel.exe')) == 0:
+                self.restart_stunnel()
+        else:
+            if not self.stunnel_p or len(self.find_procs_by_name('stunnel')) == 0:
+                self.restart_stunnel()
         if rcvnc and self.stunnel_p:
             self.stopFlag = False
             self.run_tun(rport, work_id, self.local_port)
@@ -493,9 +497,21 @@ class USystem:
         try:
             s.bind(('0.0.0.0', port))  # Bind to the port
         except:
-            pass
+            print("File sending in progress")
+            return 0
+        if not os.path.exists(os.path.dirname(filename)):
+            os.mkdir(os.path.dirname(filename))
         f = open(filename, 'wb')
-        s.listen(1)  # Now wait for client connection.
+        try:
+            s.listen(1)  # Now wait for client connection.
+        except:
+            s.close()
+            try:
+                s = socket.socket()
+                s.bind(('0.0.0.0', port))
+            except:
+                print("File sending in progress")
+                return 0
         sended = False
         while not sended:
             c, addr = s.accept()  # Establish connection with client.
@@ -511,8 +527,12 @@ class USystem:
         s.close()
 
     def run_intransfer(self, rport, filename, work_id):
-        if not self.stunnel_p:
-            self.restart_stunnel()
+        if platform.system() == 'Windows':
+            if not self.stunnel_p or len(self.find_procs_by_name('tstunnel.exe')) == 0:
+                self.restart_stunnel()
+        else:
+            if not self.stunnel_p or len(self.find_procs_by_name('stunnel')) == 0:
+                self.restart_stunnel()
         if self.stunnel_p:
             self.stopFlag = False
             self.run_tun(rport, work_id, self.local_port + 1)

@@ -70,7 +70,8 @@ class Stunnel(StunnelConfig):
                 else:
                     config_file = '%s' % self.config_file if self.config_file else ""
                 try:
-                    rc = subprocess.Popen([bin_path, config_file])
+                    CREATE_NO_WINDOW = 0x08000000
+                    rc = subprocess.Popen([bin_path, config_file], creationflags=CREATE_NO_WINDOW)
                 except:
                     rc = None
             except KeyboardInterrupt:

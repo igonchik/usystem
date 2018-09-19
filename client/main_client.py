@@ -24,9 +24,35 @@ except:
     from transport import UTransport
 from multiprocessing import Pool
 import _thread
+import platform
 
 
 ADMIN_PIN = ''
+
+
+class WindowsInhibitor:
+    '''Prevent OS sleep/hibernate in windows; code from:
+    https://github.com/h3llrais3r/Deluge-PreventSuspendPlus/blob/master/preventsuspendplus/core.py
+    API documentation:
+    https://msdn.microsoft.com/en-us/library/windows/desktop/aa373208(v=vs.85).aspx'''
+    ES_CONTINUOUS = 0x80000000
+    ES_SYSTEM_REQUIRED = 0x00000001
+
+    def __init__(self):
+        pass
+
+    def inhibit(self):
+        import ctypes
+        print("Preventing Windows from going to sleep")
+        ctypes.windll.kernel32.SetThreadExecutionState(
+            WindowsInhibitor.ES_CONTINUOUS | \
+            WindowsInhibitor.ES_SYSTEM_REQUIRED)
+
+    def uninhibit(self):
+        import ctypes
+        print("Allowing Windows to go to sleep")
+        ctypes.windll.kernel32.SetThreadExecutionState(
+            WindowsInhibitor.ES_CONTINUOUS)
 
 
 class LogInGroup(QtWidgets.QDialog):
@@ -81,42 +107,6 @@ class LogInGroup(QtWidgets.QDialog):
         self.move(qr.topLeft())
 
 
-class HelpDialog(QtWidgets.QDialog):
-    def closeEvent(self, evnt):
-        evnt.ignore()
-        self.hide()
-
-    def enterPin(self):
-        pass
-
-    def __init__(self, parent=None):
-        QtWidgets.QDialog.__init__(self, parent)
-        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
-        self.stnl = None
-        self.p12name = ''
-        self.pin = ''
-        self.setFixedSize(260, 130)
-        self.setWindowTitle(u'Защищённое соединение')
-        self.setWindowIcon(QtGui.QIcon('/usr/share/icons/fly-astra/64x64/status/dialog-password.png'))
-        self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowMinMaxButtonsHint
-                            & ~QtCore.Qt.WindowContextHelpButtonHint)
-
-        self.title_pin = QtWidgets.QLabel(u'Задайте пароль администратора:', self)
-        self.pin_box = QtWidgets.QLineEdit(self)
-        self.pin_box.setEchoMode(QtWidgets.QLineEdit.Password)
-        self.send_btn = QtWidgets.QPushButton(u'Подтвердить')
-        self.send_btn.clicked.connect(self.enterPin)
-        layout = QtWidgets.QVBoxLayout(self)
-        layout.addWidget(self.title_pin)
-        layout.addWidget(self.pin_box)
-        layout.addWidget(self.send_btn)
-
-        qr = self.frameGeometry()
-        cp = QtWidgets.QDesktopWidget().availableGeometry().center()
-        qr.moveCenter(cp)
-        self.move(qr.topLeft())
-
-
 class UGuiClient:
     def send_task(self, text):
         pass
@@ -126,16 +116,22 @@ class UGuiClient:
 
     def close(self):
         self.usystem.usysapp.close()
+        if platform.system() == 'Windows':
+            import winreg
+            # TODO: hibernation
+            # osSleep = WindowsInhibitor()
+            # osSleep.uninhibit()
+            try:
+                subkey = "*\\shell\\Send to USystem\\command"
+                winreg.DeleteKey(winreg.HKEY_CLASSES_ROOT, subkey)
+                subkey = "*\\shell\\Send to USystem"
+                winreg.DeleteKey(winreg.HKEY_CLASSES_ROOT, subkey)
+            except:
+                pass
         sys.exit()
 
     def helpmedef(self):
-        pool = Pool(processes=1)
-        pool.apply_async(self.usystem.usysapp.run_tun, [5930])
-        if self.usystem_gid:
-            self.help_dialog = HelpDialog()
-            self.help_dialog.show()
-        else:
-            QtWidgets.QMessageBox.about(self, u"Ошибка!", u"Не удалось завершить соединение!")
+        pass
 
     def admin_logindef(self):
         self.usystem.adminpin = ''
@@ -242,4 +238,15 @@ class UGuiClient:
 
 if __name__ == '__main__':
     app = UGuiClient()
+    osSleep = None
+    hKey = None
+    if platform.system() == 'Windows':
+        osSleep = WindowsInhibitor()
+        osSleep.inhibit()
+        import winreg
+        subkey = "*\\shell\\Send to USystem\\command"
+        hKey = winreg.CreateKey(winreg.HKEY_CLASSES_ROOT, subkey)
+        winreg.SetValueEx(hKey, None, 0, winreg.REG_SZ, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                                                     "filesend.exe"))
+
     app.run()

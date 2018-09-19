@@ -2,7 +2,7 @@
 <p>OS Name: <mark>{{ wmiinfo.osname }}</mark></p>
 <p>OS Version: <mark>{{ wmiinfo.osversion }}</mark></p>
 <p>Process: <mark>{{ wmiinfo.proc_info }}</mark></p>
-<p>Free RAM: <mark>{{ wmiinfo.free_ram|bytes_2_human_readable }} from {{ wmiinfo.system_ram|bytes_2_human_readable }}</mark></p>
+<p>Free RAM: <mark>{{ wmiinfo.free_ram|kbytes_2_human_readable }} from {{ wmiinfo.system_ram|kbytes_2_human_readable }}</mark></p>
 <p>Domain: <mark>{{ wmiinfo.domain }}</mark></p>
 <p>Computer name: <mark>{{ wmiinfo.name }}</mark></p>
 <p>Logged in username: <mark>{{ wmiinfo.username }}</mark></p>

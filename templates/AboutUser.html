@@ -13,6 +13,7 @@
                     <li><a href="#_target_2">Информация о сертификате</a></li>
                     <li><a href="#_target_4">Выгнать пользователя</a></li>
                     <li><a href="#_target_5">Последние изменения</a></li>
+                    <li><a href="#_target_6">Аудит</a></li>
                 </ul>
             </td>
             <td>
@@ -32,7 +33,7 @@
                         <p>Last Activity: <mark>{{ rec.lastactivity_tstamp|date:"d.m.Y H:i" }}</mark></p>
                         <p>Soft version: <mark>{{ rec.version }}</mark></p>
                     </div>
-                    <div id="_target_1" style="min-height: 90px" class="targets">
+                    <div id="_target_1" class="targets">
                         <form
                                 data-role="validator"
                                 action="javascript:"
@@ -93,6 +94,24 @@
                     <div id="_target_5" class="targets">
                         TODO: working in progress
                     </div>
+                    <div id="_target_6" class="targets">
+                        <div class="d-flex flex-justify-center" id="activity"><div data-role="activity" data-type="cycle" data-style="color"></div></div>
+                        <script>
+                            function audit() {
+                                $.ajax({
+                                    url: '/mainaudit/{{ rec.id }}/,
+                                    success: function(data) {
+                                        $('#_target_6').html(data);
+                                    },
+                                    error: function() {
+                                        $('#_target_6').html(progresserror);
+                                    }
+                                });
+                            }
+                            audit();
+                            alert(1);
+                        </script>
+                    </div>
                 </div>
 
             </td>
@@ -108,7 +127,9 @@
     }
 
     .bd-default div.targets {
-        min-height: 208px;
+        min-height: 248px;
+        max-height: 560px;
+        overflow-y: scroll;
     }
 
     .tabs-expand-fs {

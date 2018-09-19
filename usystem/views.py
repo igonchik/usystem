@@ -24,6 +24,51 @@ def file_view(request, path):
     return fm.render(request, path)
 
 
+def audit_json(request, uid):
+    def getwmi(agent_id):
+        _res = {}
+        try:
+            wmiinfo = WMIInfo.objects.get(agent_id=agent_id)
+            wmidrive = WMIDrive.objects.select_related('drivetype').filter(wmi_id=wmiinfo.id)
+            wmiipinfo = WMIIPInfo.objects.select_related('netdrive').filter(netdrive__wmi_id=wmiinfo.id)
+            wmigpu = WMIGpuInfo.objects.filter(wmi_id=wmiinfo.id)
+            _res.update({'osname': wmiinfo.osname, 'osversion': wmiinfo.osversion, 'proc_info': wmiinfo.proc_info,
+                         'freeram': wmiinfo.free_ram, 'sysram': wmiinfo.system_ram, 'domain': wmiinfo.domain,
+                         'computername': wmiinfo.name, 'username': wmiinfo.username, 'cpu_load': wmiinfo.cpu_load,
+                         })
+            _res_d = []
+            for rec in wmidrive:
+                _res_d.append({'caption': rec.caption, 'free': rec.free, 'size': rec.size,
+                               'drivetype': rec.drivetype.caption})
+
+            _res_gpu = []
+            for rec in wmigpu:
+                _res_gpu.append({'caption': rec.caption})
+
+            _res_net = []
+            for rec in wmiipinfo:
+                _res_net.append({'caption': rec.netdrive.caption, 'ipaddr': rec.ipaddr, 'macaddr': rec.macaddr})
+
+            _res.update({'drivers': _res_d, 'gpu': _res_gpu, 'netdrive': _res_net})
+        except:
+            pass
+        return JsonResponse(_res)
+
+    minion = User.objects.get(id=uid)
+    new_work = Worker(status_id=1, username=minion.username, work='MAINAUDIT')
+    new_work.save()
+    time_index = 0
+    while time_index < 20 and minion.isactive() > 0:
+        time.sleep(1)
+        time_index += 1
+        if Worker.objects.get(id=new_work.id).status_id == 4:
+            print(1)
+            return getwmi(int(uid))
+    new_work.status_id = 5
+    new_work.save()
+    return getwmi(int(uid))
+
+
 def main_audit(request, uid):
     def getwmi(agent_id):
         _res = {}
@@ -49,6 +94,8 @@ def main_audit(request, uid):
         time_index += 1
         if Worker.objects.get(id=new_work.id).status_id == 4:
             return render(request, 'WMIInfo.html', getwmi(uid))
+    new_work.status_id = 5
+    new_work.save()
     return render(request, 'WMIInfo.html', getwmi(uid))
 
 

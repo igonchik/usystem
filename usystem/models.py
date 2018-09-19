@@ -175,7 +175,7 @@ class WMINetDrive(models.Model):
 
 class WMIIPInfo(models.Model):
     netdrive = models.ForeignKey(WMINetDrive, on_delete=CASCADE)
-    ipaddr = models.IPAddressField()
+    ipaddr = models.GenericIPAddressField()
     macaddr = models.CharField(null=False, max_length=128)
 
     class Meta:

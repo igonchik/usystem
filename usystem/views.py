@@ -14,11 +14,8 @@ from filemanager import FileManager
 import platform
 
 
-__USERNAME = 'utest'
-
-
 def file_view(request, path):
-    user = get_user(__USERNAME)
+    user = get_user(request.META['HTTP_X_FORWARDED_USER'])
     #fm = FileManager(os.path.join(user.home_path, 'share'))
     fm = FileManager('C:\\Users\\d.goncharov.ACC\\servershare')
     return fm.render(request, path)
@@ -125,7 +122,7 @@ def get_open_port(worker, count=1):
 
 
 def checktable(request):
-    user = get_user(__USERNAME)
+    user = get_user(request.META['HTTP_X_FORWARDED_USER'])
     groups = Group.objects.all().order_by('id')
     response = {'user': user, 'groups': groups}
     return render(request, 'CheckTable.html', response)
@@ -162,7 +159,7 @@ def sendfile(request):
     if platform.system() != 'Windows':
         import pwd
     uid = int(uids[0])
-    user = get_user(__USERNAME)
+    user = get_user(request.META['HTTP_X_FORWARDED_USER'])
     minion = User.objects.prefetch_related('user2group_set').get(id=uid)
     new_work = Worker(status_id=1, username=minion.username)
     new_work.save()
@@ -235,7 +232,7 @@ def sendfile(request):
 def connectvnc(request, uid):
     if platform.system() != 'Windows':
         import pwd
-    user = get_user(__USERNAME)
+    user = get_user(request.META['HTTP_X_FORWARDED_USER'])
     minion = User.objects.prefetch_related('user2group_set').get(id=uid)
     new_work = Worker(status_id=1, username=minion.username)
     new_work.save()
@@ -331,7 +328,7 @@ def minion_json(request, num=0):
       "cls": ..., // additional class for header cell
     },
     """
-    user = get_user(__USERNAME)
+    user = get_user(request.META['HTTP_X_FORWARDED_USER'])
     num = int(num)
     groups = Group.objects.filter(user2group__user_id=user.id).values_list('id', flat=True).order_by('id')
     groups_id = list(groups)
@@ -419,7 +416,7 @@ def minion_json(request, num=0):
 
 @transaction.atomic
 def delete_group(request, num):
-    user = get_user(__USERNAME)
+    user = get_user(request.META['HTTP_X_FORWARDED_USER'])
     gr = Group.objects.get(id=int(num))
     gr_path = Group.objects.filter(path__startswith=gr.path).values_list('id', flat=True)
     exists = User2Group.objects.filter(group_id__in=gr_path, user__is_master=False).exists()
@@ -433,7 +430,7 @@ def delete_group(request, num):
 
 @transaction.atomic
 def add_group(request, num=0):
-    user = get_user(__USERNAME)
+    user = get_user(request.META['HTTP_X_FORWARDED_USER'])
     parent = 0
     if 'parent' in request.GET:
         parent = request.GET['parent']
@@ -545,7 +542,7 @@ def about(request, num=0):
 @transaction.atomic
 def removeagent(request, num):
     minion = User.objects.get(id=num)
-    user = get_user(__USERNAME)
+    user = get_user(request.META['HTTP_X_FORWARDED_USER'])
     if request.method == 'POST':
         post = safe_query(request.POST)
         if 'pin' in post and post['pin'] != '':
@@ -577,7 +574,7 @@ def updatecert(request, num):
     groupset = Group.objects.filter(id__in=User2Group.objects.filter(user_id=
                                                                      minion.id).values_list('group_id', flat=True))
     groups = Group.objects.all().order_by('id')
-    user = get_user(__USERNAME)
+    user = get_user(request.META['HTTP_X_FORWARDED_USER'])
     if request.method == 'POST':
         post = safe_query(request.POST)
         if 'path' in post and post['path'] != '' and 'pin' in post and post['pin'] != '':
@@ -644,7 +641,7 @@ def updatecert(request, num):
 @transaction.atomic
 def genadminpin(request):
     from datetime import timedelta
-    user = get_user(__USERNAME)
+    user = get_user(request.META['HTTP_X_FORWARDED_USER'])
     from random import randint
     inbase = list(Worker.objects.filter(username='*', status_id=4, work__startswith='ADMPIN',
                                         create_tstamp__gte=datetime.now() - timedelta(hours=1))
@@ -669,7 +666,7 @@ def get_user(username):
 
 @transaction.atomic
 def index(request, cur_group=0):
-    user = get_user(__USERNAME)
+    user = get_user(request.META['HTTP_X_FORWARDED_USER'])
     groups = Group.objects.all().order_by('id')
     response = {'user': user, 'groups': groups, 'current_group_id': cur_group}
     return render(request, 'main.html', response)

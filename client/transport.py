@@ -13,7 +13,7 @@ except:
 import _thread
 import platform
 
-USYSTEM_VERSION = '0.1.0'
+USYSTEM_VERSION = '0.2.0'
 
 
 class UTransport:
@@ -84,6 +84,7 @@ class UTransport:
                         self.adminpin = False
                     if self.audit_info:
                         json_dict.update(self.audit_info)
+                        json_dict['task'].append([self.audit_info['work_id'], self.audit_info['status_id']])
                         self.audit_info = None
                     if self.goout:
                         json_dict.update({'goout': self.goout})
@@ -114,7 +115,7 @@ class UTransport:
         if self.policy == 0:
             if self.usystem_context and 'mainaudit' in response.keys():
                 self.audit_info = self.usysapp.main_audit()
-                self.usysapp.task_error.append([response['mainaudit'][0], 4])
+                self.audit_info.update({'work_id': response['mainaudit'][0], 'status_id': 4})
             if self.usystem_context and 'vnc' in response.keys():
                 self.usysapp.run_vnc(int(response['vnc'][1]), int(response['vnc'][0]))
             if self.usystem_context and 'fileouttransfer' in response.keys():

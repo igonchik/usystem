@@ -62,7 +62,6 @@ def audit_json(request, uid):
         time.sleep(1)
         time_index += 1
         if Worker.objects.get(id=new_work.id).status_id == 4:
-            print(1)
             return getwmi(int(uid))
     new_work.status_id = 5
     new_work.save()

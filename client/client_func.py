@@ -369,51 +369,25 @@ class USystem:
         self.stunnel_p = self.tunnel.start(self.stunnel_server)
 
     def main_audit(self):
-        DRIVE_TYPES = {
-            0: "Unknown",
-            1: "No Root Directory",
-            2: "Removable Disk",
-            3: "Local Disk",
-            4: "Network Drive",
-            5: "Compact Disc",
-            6: "RAM Disk"
-        }
         drive = list()
         netdev = list()
         proc_info = ''
         gpu_info = list()
         os_name = ''
         os_version = ''
-        system_ram = '0 GB'
-        free_ram = '0 GB'
-        computer_info = None
+        system_ram = 0
+        free_ram = 0
         cpu_load = 0
+        username = ''
+        cname = ''
+        dname = ''
         if platform.system() == 'Windows':
-            def get_cpu_load():
-                """ Returns a list CPU Loads"""
-                result = 0
-                count = 0
-                cmd = "WMIC CPU GET LoadPercentage "
-                response = os.popen(cmd + ' 2>&1', 'r').read().strip().split("\n\n")
-                for load in response[1:]:
-                    result += int(load)
-                    count += 1
-                if count > 0:
-                    return round(result / count, 2)
-                else:
-                    response = os.popen(cmd + ' 2>&1', 'r').read().strip().split("\r\n")
-                    for load in response[1:]:
-                        result += int(load)
-                        count += 1
-                    if count > 0:
-                        return round(result / count, 2)
-                    return 0
-
             import pythoncom
             pythoncom.CoInitialize()
             try:
                 import wmi
-                cpu_load = get_cpu_load()
+                import psutil
+                cpu_load = round(psutil.cpu_percent())
                 c = wmi.WMI()
                 computer_info = c.Win32_ComputerSystem()[0]
                 os_info = c.Win32_OperatingSystem()[0]
@@ -435,12 +409,17 @@ class USystem:
                     for ip_address in interface.IPAddress:
                         ipinfo.append(ip_address)
                     netdev.append((interface.Description, interface.MACAddress, ipinfo))
+                username = computer_info.UserName
+                cname = computer_info.Name
+                dname = computer_info.Domain
+            except:
+                pass
             finally:
                 pythoncom.CoUninitialize()
         _result = {'drive': drive, 'netdev': netdev, 'OS Name': u'{0}'.format(os_name).strip(),
                    'OS Version': os_version, 'CPU': proc_info, 'Free RAM': free_ram, 'SYS RAM': system_ram,
-                   'Graphics Card': gpu_info, 'Domain': computer_info.Domain, 'Name': computer_info.Name,
-                   'Username': computer_info.UserName, 'CPU Load': cpu_load, 'mainaudit': True}
+                   'Graphics Card': gpu_info, 'Domain': dname, 'Name': cname,
+                   'Username': username, 'CPU Load': cpu_load, 'mainaudit': True}
         return _result
 
     @staticmethod

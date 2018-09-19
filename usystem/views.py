@@ -58,7 +58,7 @@ def audit_json(request, uid):
     new_work = Worker(status_id=1, username=minion.username, work='MAINAUDIT')
     new_work.save()
     time_index = 0
-    while time_index < 20 and minion.isactive() > 0:
+    while time_index < 10 and minion.isactive() > 0:
         time.sleep(1)
         time_index += 1
         if Worker.objects.get(id=new_work.id).status_id == 4:

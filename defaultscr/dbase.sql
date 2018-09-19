@@ -135,9 +135,13 @@ create or replace rule pubuser_confirm as on update to usystem_pubuser do instea
 --USERs RULEs
 
 create or replace view  pubview.usystem_group_view as
+			select * from usystem_group where author like CURRENT_USER;
+
+			  --TODO
+create or replace view  pubview.usystem_group_view as
 			select * from usystem_group where author like CURRENT_USER or id in (select group_id from usystem_user2group
 			        where user_id in (select id from usystem_user where username like CURRENT_USER and is_master = 't'
-			          or is_master = 'f'));
+			          or is_master = 'f' ));
 
 create or replace view  pubview.usystem_user2group_view as
 	select * from usystem_user2group where group_id in (select id from pubview.usystem_group_view);

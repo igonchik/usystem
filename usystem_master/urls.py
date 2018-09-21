@@ -5,10 +5,14 @@ from django.conf.urls.static import static
 from django.conf import settings
 from usystem.views import *
 from filemanager import path_end
+from os import environ
 
 handler403 = 'usystem_master.errhandlers.error403'
 handler404 = 'usystem_master.errhandlers.error403'
 handler500 = 'usystem_master.errhandlers.error500'
+
+environ['AUTH_USER'] = 'utest'
+settings.DATABASES['default']['USER'] = environ['AUTH_USER']
 
 urlpatterns = [
                   url(r'^admin/', admin.site.urls),

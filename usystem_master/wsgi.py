@@ -1,4 +1,18 @@
 import os
-from django.core.wsgi import get_wsgi_application
+from django.core.handlers.wsgi import WSGIHandler
+import django
+
+
+class WSGIEnvironment(WSGIHandler):
+    def __call__(self, environ, start_response):
+        try:
+            os.environ['AUTH_USER'] = environ['SSL_CLIENT_I_DN_CN']
+        except:
+            os.environ['AUTH_USER'] = ''
+        return super(WSGIEnvironment, self).__call__(environ, start_response)
+
+
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "usystem_master.settings")
-application = get_wsgi_application()
+django.setup(set_prefix=False)
+application = WSGIEnvironment()
+

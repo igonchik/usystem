@@ -22,7 +22,6 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
         'NAME': 'usystem',
         'HOST': 'cp.u-system.tech',
-        'USER': 'utest',
     }
 }
 

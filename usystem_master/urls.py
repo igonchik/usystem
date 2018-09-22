@@ -11,9 +11,6 @@ handler403 = 'usystem_master.errhandlers.error403'
 handler404 = 'usystem_master.errhandlers.error403'
 handler500 = 'usystem_master.errhandlers.error500'
 
-environ['AUTH_USER'] = 'utest'
-settings.DATABASES['default']['USER'] = environ['AUTH_USER']
-
 urlpatterns = [
                   url(r'^admin/', admin.site.urls),
                   url(r'^$', index, name='index'),

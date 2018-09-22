@@ -9,6 +9,8 @@ class WSGIEnvironment(WSGIHandler):
             os.environ['AUTH_USER'] = environ['SSL_CLIENT_I_DN_CN']
         except:
             os.environ['AUTH_USER'] = ''
+        from django.conf import settings
+        settings.DATABASES['default']['USER'] = os.environ['AUTH_USER']
         return super(WSGIEnvironment, self).__call__(environ, start_response)
 
 

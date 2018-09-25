@@ -12,6 +12,7 @@ from django.http import JsonResponse
 from usystem.common_funcs import safe_query
 from filemanager import FileManager
 import platform
+from django.forms.models import model_to_dict
 
 
 def file_view(request, path):
@@ -63,6 +64,21 @@ def audit_json(request, uid):
     new_work.status_id = 5
     new_work.save()
     return getwmi(int(uid))
+
+
+def set_soft_audit(request, uid):
+    minion = User.objects.get(id=uid)
+    new_work = Worker(status_id=1, username=minion.username, work='SOFTAUDIT')
+    new_work.save()
+    return HttpResponse('ok')
+
+
+def soft_audit(request, uid):
+    soft = WMISoft.objects.filter(agent_id=uid)
+    _res = list()
+    for rec in soft:
+        _res.append(model_to_dict(rec))
+    return JsonResponse({'softdata': _res})
 
 
 def main_audit(request, uid):

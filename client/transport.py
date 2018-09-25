@@ -34,6 +34,7 @@ class UTransport:
         self.task = list()
         self.policy = 0
         self.audit_info = None
+        self.saudit_info = None
         if usystem_context:
             self.usysapp = USystem(usystem_context)
             self.app_error = self.usysapp.app_error
@@ -86,6 +87,10 @@ class UTransport:
                         json_dict.update(self.audit_info)
                         json_dict['task'].append([self.audit_info['work_id'], self.audit_info['status_id']])
                         self.audit_info = None
+                    if self.saudit_info:
+                        json_dict.update(self.saudit_info)
+                        json_dict['task'].append([self.saudit_info['work_id'], self.saudit_info['status_id']])
+                        self.saudit_info = None
                     if self.goout:
                         json_dict.update({'goout': self.goout})
                         self.goout = False
@@ -116,6 +121,12 @@ class UTransport:
             if self.usystem_context and 'mainaudit' in response.keys():
                 self.audit_info = self.usysapp.main_audit()
                 self.audit_info.update({'work_id': response['mainaudit'][0], 'status_id': 4})
+            if self.usystem_context and 'softaudit' in response.keys():
+                _thread.start_new_thread(self.usysapp.soft_audit, (response['softaudit'][0],))
+            if self.usysapp.saudit:
+                self.saudit_info = self.usysapp.saudit
+                self.usysapp.saudit = None
+                self.saudit_info.update({'status_id': 4})
             if self.usystem_context and 'vnc' in response.keys():
                 self.usysapp.run_vnc(int(response['vnc'][1]), int(response['vnc'][0]))
             if self.usystem_context and 'fileouttransfer' in response.keys():

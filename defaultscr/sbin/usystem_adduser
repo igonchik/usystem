@@ -17,6 +17,8 @@ echo "insert into "
 email=`echo "select email from usystem_user where username like '$username';" | su postgres -- -c  "psql -d usystem --no-align --tuples-only"`
 
 if [ -n "$email" ]; then
+echo "update usystem_user set email_confirmed = 't', is_master='t', home_path='/home/$username' where username like '$username';" | su postgres -- -c "psql -d usystem"
+
 mkdir /home/$username/share
 mkdir /home/$username/newcerts
 mkdir /home/$username/certs

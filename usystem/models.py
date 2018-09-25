@@ -182,6 +182,17 @@ class WMIIPInfo(models.Model):
         db_table = '"pubview"."usystem_wmiipinfo_view"'
 
 
+class WMISoft(models.Model):
+    agent = models.ForeignKey(User, on_delete=CASCADE)
+    display_version = models.TextField(null=False)
+    display_name = models.TextField(null=False)
+    install_location = models.TextField(null=False)
+    install_date = models.DateTimeField()
+
+    class Meta:
+        db_table = '"pubview"."usystem_wmisoft_view"'
+
+
 class WMIGpuInfo(models.Model):
     wmi = models.ForeignKey(WMIInfo, on_delete=CASCADE)
     caption = models.TextField(null=False)

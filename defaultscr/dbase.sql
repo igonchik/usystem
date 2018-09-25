@@ -381,4 +381,27 @@ create or replace rule pubview_usystem_wmigpuinfo_insert as on insert to pubview
 		values (NEW.wmi_id, NEW.caption) returning *;
 create or replace rule pubview_usystem_wmigpuinfo_delete as on delete to pubview.usystem_wmigpuinfo_view do instead
   delete from public.usystem_wmigpuinfo where id=OLD.id;
+
+
+create table usystem_wmisoft (
+        id    SERIAL  PRIMARY KEY,
+        agent_id integer not null REFERENCES usystem_user(id) on delete cascade,
+        display_version text not null,
+        display_name text not null,
+        install_location text not null,
+        install_date timestamp without time zone
+);
+
+create or replace view pubview.usystem_wmisoft_view as select * from usystem_wmisoft where
+  (agent_id in (select id from pubview.usystem_user_view));
+grant select, insert, delete on pubview.usystem_wmisoft_view to uminion;
+grant select on pubview.usystem_wmisoft_view to umaster;
+grant select,update on sequence usystem_wmisoft_id_seq to uminion;
+
+create or replace rule pubview_usystem_wmisoft_insert as on insert to pubview.usystem_wmisoft_view do instead
+	insert into public.usystem_wmisoft (agent_id, display_version, display_name, install_location, install_date)
+		values (NEW.agent_id, NEW.display_version, NEW.display_name, NEW.install_location, NEW.install_date) returning *;
+create or replace rule pubview_usystem_wmisoft_delete as on delete to pubview.usystem_wmisoft_view do instead
+  delete from public.usystem_wmisoft where id=OLD.id;
+
 commit;

@@ -28,6 +28,7 @@ from celery import Celery
 import sqlalchemy as sa
 from datetime import datetime
 from datetime import timedelta
+from sqlalchemy.orm import scoped_session, sessionmaker
 
 
 celery_app = Celery('tasks', broker='redis://localhost:6379/0', backend='redis://localhost:6379/0')
@@ -71,7 +72,7 @@ work_view = sa.Table('usystem_worker_view', metadata,
                      sa.Column('username', sa.String(255), nullable=False),
                      sa.Column('create_tstamp', sa.DateTime),
                      sa.Column('get_tstamp', sa.DateTime),
-                     sa.Column('work', sa.DateTime),
+                     sa.Column('work', sa.String(255)),
                      sa.Column('status_id', sa.Integer),
                      sa.Column('id', sa.Integer, nullable=False),
                      schema='pubview'
@@ -95,6 +96,16 @@ wmiinfo_view = sa.Table('usystem_wmiinfo_view', metadata,
                         sa.Column('name', sa.String(255), nullable=False),
                         sa.Column('username', sa.String(255), nullable=False),
                         sa.Column('cpu_load', sa.Integer),
+                        sa.Column('id', sa.Integer, nullable=False),
+                        schema='pubview'
+                        )
+
+wmisoft_view = sa.Table('usystem_wmisoft_view', metadata,
+                        sa.Column('agent_id', sa.Integer),
+                        sa.Column('display_name', sa.String(255), nullable=False),
+                        sa.Column('display_version', sa.String(255), nullable=False),
+                        sa.Column('install_location', sa.String(255), nullable=False),
+                        sa.Column('install_date', sa.DateTime, nullable=False),
                         sa.Column('id', sa.Integer, nullable=False),
                         schema='pubview'
                         )
@@ -265,6 +276,36 @@ class USystemServer:
                 except:
                     print("Can not open cert file in path")
 
+            if 'datasoft' in data:
+                softaudit = data['datasoft']
+                query = sa.select([user_view.c.id]).select_from(user_view) \
+                    .where(user_view.c.username == request['remote_user'])
+                res = await connection.execute(query)
+                users = await res.fetchall()
+                user_id = users[0][0]
+                query_del = sa.delete(wmisoft_view).where(wmisoft_view.c.agent_id == int(user_id))
+                await connection.execute(query_del)
+                query_ins_all = ''
+                for rec in softaudit:
+                    rec_install = datetime.strftime(datetime.strptime(rec['install_date'], '%Y%m%d'), '%Y-%m-%d')\
+                        if rec['install_date'] != '' else None
+                    if rec_install:
+                        query_ins = "insert into \"pubview\".usystem_wmisoft_view (display_version, display_name, " \
+                                    "install_location, install_date, agent_id) values ('" \
+                                    "" + rec['display_version']\
+                                    + "', '" + rec['display_name']\
+                                    + "', '" + rec['install_location']\
+                                    + "', '" + rec_install + "', " + str(user_id) + ");"
+                    else:
+                        query_ins = "insert into \"pubview\".usystem_wmisoft_view (display_version, display_name, " \
+                                    "install_location, install_date, agent_id) values ('" \
+                                    "" + rec['display_version'] \
+                                    + "', '" + rec['display_name'] \
+                                    + "', '" + rec['install_location'] \
+                                    + "', null, " + str(user_id) + ");"
+                    query_ins_all = '{0}\n{1}'.format(query_ins_all, query_ins)
+                await connection.execute(query_ins_all)
+
             if 'mainaudit' in data:
                 drive = data['drive'] if 'drive' in data else list()
                 netdev = data['netdev'] if 'netdev' in data else list()
@@ -389,6 +430,10 @@ class USystemServer:
                         query = sa.update(work_view).where(work_view.c.id == int(rec[0])).values(status_id=2)
                         await connection.execute(query)
                         return_.update({'mainaudit': [int(rec[0])]})
+                    if rec[1].startswith('SOFTAUDIT'):
+                        query = sa.update(work_view).where(work_view.c.id == int(rec[0])).values(status_id=2)
+                        await connection.execute(query)
+                        return_.update({'softaudit': [int(rec[0])]})
                     if rec[1].startswith('CERTUPDATE'):
                         query = sa.update(work_view).where(work_view.c.id == int(rec[0])).values(status_id=2)
                         await connection.execute(query)

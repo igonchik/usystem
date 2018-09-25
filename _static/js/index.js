@@ -66,7 +66,7 @@ function actionsAboutMinion(elem) {
         overlay: true,
         clsAction: 'notshow',
         clsDialog: 'showTop aboutminion',
-        width: 900,
+        width: w,
         overlayClickClose: 'true',
         content: function() {
             if (active_VNC && parseInt(active_VNC) > 0)

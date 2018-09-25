@@ -63,6 +63,7 @@ class USystem:
         self.vnc_connect = False
         self.stunnel_p = None
         self.stunnel_pr = None
+        self.saudit = None
         self.share_path = ''
         self.BASE_DIR = os.path.dirname(usystem_context)
         self.BASE_DIR = "C:\\Users\\d.goncharov.ACC\\USystem\\RR3ACGQ7"
@@ -367,6 +368,44 @@ class USystem:
     def restart_stunnel(self):
         self._kill_tunnel()
         self.stunnel_p = self.tunnel.start(self.stunnel_server)
+
+    def soft_audit(self, work_id):
+        soft = list()
+        if platform.system() == 'Windows':
+            from winreg import HKEY_LOCAL_MACHINE, KEY_ALL_ACCESS, OpenKey, QueryValueEx, EnumKey
+            keyPath = "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall"
+            aKey = OpenKey(HKEY_LOCAL_MACHINE, keyPath, 0, KEY_ALL_ACCESS)
+            i = 0
+            exception = False
+            while not exception:
+                try:
+                    subkey = EnumKey(aKey, i)
+                    path = keyPath + "\\" + subkey
+                    key = OpenKey(HKEY_LOCAL_MACHINE, path, 0, KEY_ALL_ACCESS)
+                    try:
+                        display_name = str(QueryValueEx(key, 'DisplayName')[0])
+                        try:
+                            display_version = str(QueryValueEx(key, 'DisplayVersion')[0])
+                        except:
+                            display_version = ''
+                        try:
+                            install_location = str(QueryValueEx(key, 'InstallLocation')[0])
+                        except:
+                            install_location = ''
+                        try:
+                            install_date = str(QueryValueEx(key, 'InstallDate')[0])
+                        except:
+                            install_date = ''
+                        soft.append({'display_version': display_version.replace('\'', '\'\'\''),
+                                     'display_name': display_name.replace('\'', '\'\'\''),
+                                     'install_location': install_location.replace('\'', '\'\'\''),
+                                     'install_date': install_date})
+                    except:
+                        pass
+                except:
+                    exception = True
+                i += 1
+        self.saudit = {'datasoft': soft, 'softaudit': True, 'work_id': work_id}
 
     def main_audit(self):
         drive = list()

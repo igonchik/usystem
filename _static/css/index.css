@@ -1,3 +1,9 @@
+.dialog {
+    max-width: none !important;
+    max-height: none !important;
+
+}
+
 .main {
     width: 100%;
 }

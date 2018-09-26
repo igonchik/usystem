@@ -25,6 +25,7 @@ except:
 from multiprocessing import Pool
 import _thread
 import platform
+import webbrowser
 
 
 ADMIN_PIN = ''
@@ -130,8 +131,9 @@ class UGuiClient:
                 pass
         sys.exit()
 
-    def helpmedef(self):
-        pass
+    def helpmedef(self, reason=0):
+        #webbrowser.open('https://google.com?guid='+str(self.usystem_uid), new=2)
+        webbrowser.open('http://help2.acomps.ru/?m=prime-vaio.root.ruselkom&g=root.ruselkom&a=449011636951146', new=2)
 
     def admin_logindef(self):
         self.usystem.adminpin = ''
@@ -201,6 +203,7 @@ class UGuiClient:
         translator.load(os.path.join(self.current_dir, 'locale', 'qt_%s.qm' % locale[0]))
         self.app.installTranslator(translator)
         self.trayIcon = QtWidgets.QSystemTrayIcon()
+        self.trayIcon.activated.connect(self.helpmedef)
         self.statusicon_low = QtGui.QIcon(os.path.join(self.current_dir, 'img', 'security-low.png'))
         self.statusicon_high = QtGui.QIcon(os.path.join(self.current_dir, 'img', 'security-hight.png'))
         self.statusicon_medium = QtGui.QIcon(os.path.join(self.current_dir, 'img', 'security-medium.png'))

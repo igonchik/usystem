@@ -13,6 +13,7 @@ from usystem.common_funcs import safe_query
 from filemanager import FileManager
 import platform
 from django.forms.models import model_to_dict
+from django.shortcuts import redirect
 
 
 def file_view(request, path):

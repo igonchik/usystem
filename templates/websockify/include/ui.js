@@ -12,6 +12,7 @@
 
 var UI;
 
+
 (function () {
     "use strict";
 
@@ -651,7 +652,7 @@ var UI;
 
         // Display the desktop name in the document title
         updateDocumentTitle: function(rfb, name) {
-            document.title = name + " - noVNC";
+            document.title = name;
         },
 
         clipReceive: function(rfb, text) {

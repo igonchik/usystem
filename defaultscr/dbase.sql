@@ -134,14 +134,14 @@ create or replace rule pubuser_confirm as on update to usystem_pubuser do instea
 
 --USERs RULEs
 
-create or replace view  pubview.usystem_group_view as
+create or replace view pubview.usystem_group_view as
 			select * from usystem_group where author like CURRENT_USER;
 
 
-create or replace view  pubview.usystem_group_view as
+create or replace view pubview.usystem_group_view as
 			select * from usystem_group where author like CURRENT_USER or id in (select group_id from usystem_user2group
 			        where user_id in (select id from usystem_user where username like CURRENT_USER and is_master = 't'
-			           ));
+			           )) or 0 = (select count(id) from usystem_user where username like CURRENT_USER and is_master = 't');
 
 create or replace view  pubview.usystem_user2group_view as
 	select * from usystem_user2group where group_id in (select id from pubview.usystem_group_view);
@@ -160,6 +160,7 @@ grant select,delete on pubview.usystem_user2group_view to uminion;
 
 grant select,insert,delete on pubview.usystem_user2group_view to umaster;
 grant select,update on pubview.usystem_user_view to uminion;
+grant select on pubview.usystem_group_view to uminion;
 grant select,update on pubview.usystem_user_view to umaster;
 grant select,update,insert,delete on pubview.usystem_group_view to umaster;
 grant select,update on sequence usystem_user_id_seq to uuser;
@@ -248,8 +249,9 @@ create or replace rule rule_user2group_insert as on insert to pubview.usystem_us
 create or replace rule rule_user2group_delete as on delete to pubview.usystem_user2group_view do instead
   delete from public.usystem_user2group where
       user_id in (
-        select id from public.usystem_user where is_master='t' and username like CURRENT_USER or is_master='f'
-      ) and user_id = OLD.user_id and id=OLD.id;
+        select id from public.usystem_user where user_id = OLD.user_id
+            and (is_master='t' and username like CURRENT_USER or is_master='f')
+      ) and id=OLD.id;
 
 grant select, update on usystem_group_id_seq to umaster;
 grant select, update on usystem_user2group_id_seq to umaster;

@@ -206,7 +206,7 @@ def sendfile(request):
                 coonfpw_uid = 'debug'
 
             conf_path = '{1}stunnel{0}_filein.conf'.format(coonfpw_uid, hpath)
-            stunnel_conf = "setuid={0}\nclient = yes\n" \
+            stunnel_conf = "client = yes\n" \
                            "pid={1}stunnel4{0}_transfer.pid\n" \
                            "[file]\n" \
                            "verify = 2\n" \
@@ -246,7 +246,7 @@ def sendfile(request):
     return HttpResponse('Error', status=500)
 
 
-def connectvnc(request, uid):
+def connectvnc(request, uid, op=0):
     if platform.system() != 'Windows':
         import pwd
     user = get_user(request.META['HTTP_X_FORWARDED_USER'])
@@ -271,7 +271,7 @@ def connectvnc(request, uid):
             cafile = os.path.join(user.home_path, 'cacert.pem')
             conf_path = '{1}stunnel{0}_vnc.conf'.format(pwd.getpwnam(user.username).pw_uid,
                                                         user.home_path)
-            stunnel_conf = "setuid={0}\nclient = yes\n" \
+            stunnel_conf = "client = yes\n" \
                            "pid={1}stunnel4{0}_vnc.pid\n" \
                            "[vnc]\n" \
                            "verify = 2\n" \
@@ -305,7 +305,10 @@ def connectvnc(request, uid):
             host = request.META['HTTP_HOST']
             if ':' in request.META['HTTP_HOST']:
                 host = request.META['HTTP_HOST'].split(':')[0]
-            time.sleep(2)
+            time.sleep(1)
+            op = int(op)
+            if op == 0:
+                return redirect('https://{0}:{1}'.format(host, port[2]))
             return HttpResponse('https://{0}:{1}'.format(host, port[2]))
 
     new_work.status_id = 5
@@ -531,8 +534,8 @@ def about(request, num=0):
         filter(work__startswith='VNCCONNECT').order_by('id')
     if vncconnection.exists():
         vncconnection = vncconnection.last()
-        author_vnc = User.objects.get(username=vncconnection.author)
         try:
+            author_vnc = User.objects.get(username=vncconnection.author)
             port_vnc = PortMap.objects.filter(work_id=vncconnection.id).order_by('id').last().port_num
             host = request.META['HTTP_HOST']
             if ':' in request.META['HTTP_HOST']:

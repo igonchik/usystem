@@ -98,6 +98,7 @@ setfacl -d -m g::rx /home/$username/p12
 setfacl -d -m g::rx /home/$username/reqs
 setfacl -d -m g::rx /home/$username/private
 
-echo -e "$username , Вы зарегистрированы в USystem!\nПароль для доступа в <a href='http://192.168.233.11:443'>личный кабинет</a> администратора: $loginpass \nПароль для выдачи сертифкатов пользователям: $pass" | mail -s "$(echo -e 'Регистрация в USystem\nContent-Type: text/html')" $email -A /home/$username/p12/$username.p12
+chmod -R utest  /home/$username/
+echo -e "$username , Вы зарегистрированы в USystem!\nПерейти в <a href='https://cp.u-system.tech'>личный кабинет</a> администратора.\nМастер-пароль для вашей учетной записи: $pass" | mail -s "$(echo -e 'Регистрация в USystem\nContent-Type: text/html')" $email -A /home/$username/p12/$username.p12
 fi
 done

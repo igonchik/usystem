@@ -364,16 +364,13 @@ class USystemServer:
                                                     ).returning(wmiipinfo_view.c.id))
 
             if 'goout' in data:
-                query = sa.select([user_view.c.id]).select_from(user_view)\
+                query = sa.select([user_view.c.id]).select_from(user_view) \
                     .where(user_view.c.username == request['remote_user'])
                 res = await connection.execute(query)
-                if res.returns_rows:
-                    rec_u = 0
-                    users = await res.fetchall()
-                    for rec_u in users:
-                        rec_u = rec_u[0]
-                    query_del = sa.delete(u2g_view).where(u2g_view.c.user_id == int(rec_u))
-                    await connection.execute(query_del)
+                users = await res.fetchall()
+                user_id = users[0][0]
+                query_del = sa.delete(u2g_view).where(u2g_view.c.user_id == int(user_id))
+                await connection.execute(query_del)
 
             if 'adminpin' in data:
                 query = sa.select([work_view.c.author]).select_from(work_view)\

@@ -26,6 +26,7 @@ urlpatterns = [
                   url(r'^updatecert/(?P<num>\d+)/', updatecert, name='updatecert'),
                   url(r'^removeagent/(?P<num>\d+)/', removeagent, name='removeagent'),
                   url(r'^removereq/(?P<num>\d+)/', removereq, name='removereq'),
+                  url(r'^connectvnc/(?P<uid>\d+)/(?P<op>\d+)/$', connectvnc, name='connectvnc'),
                   url(r'^connectvnc/(?P<uid>\d+)/$', connectvnc, name='connectvnc'),
                   url(r'^mainaudit/(?P<uid>\d+)/$', main_audit, name='main_audit'),
                   url(r'^audit_json/(?P<uid>\d+)/$', audit_json, name='audit_json'),

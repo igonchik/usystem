@@ -22,7 +22,6 @@ try:
     from client.transport import UTransport
 except:
     from transport import UTransport
-from multiprocessing import Pool
 import _thread
 import platform
 import webbrowser
@@ -131,7 +130,6 @@ class UGuiClient:
         sys.exit()
 
     def helpmedef(self):
-        #webbrowser.open('https://google.com?guid='+str(self.usystem_uid), new=2)
         webbrowser.open('http://help2.acomps.ru/?m=prime-vaio.root.ruselkom&g=root.ruselkom&a=449011636951146', new=2)
 
     def helpme_connect(self, reason):

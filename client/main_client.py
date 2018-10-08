@@ -119,9 +119,8 @@ class UGuiClient:
         self.usystem.usysapp.close()
         if platform.system() == 'Windows':
             import winreg
-            # TODO: hibernation
-            # osSleep = WindowsInhibitor()
-            # osSleep.uninhibit()
+            osSleep = WindowsInhibitor()
+            osSleep.uninhibit()
             try:
                 subkey = "*\\shell\\Send to USystem\\command"
                 winreg.DeleteKey(winreg.HKEY_CLASSES_ROOT, subkey)

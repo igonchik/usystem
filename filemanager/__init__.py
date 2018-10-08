@@ -466,7 +466,7 @@ class FileManager(object):
             return HttpResponse('Invalid path')
         if file_or_dir == 'file':
             filepath = self.basepath + '/' + path
-            wrapper = FileWrapper(open(filepath))
+            wrapper = FileWrapper(open(filepath, 'rb'))
             response = HttpResponse(
                 wrapper,
                 content_type=mimetypes.guess_type(filepath)[0],
